@@ -1,21 +1,5 @@
-from typing import List, Literal, Tuple
-from dataclasses import dataclass
-
-
-@dataclass
-class Token:
-    type: Literal["name", "operator", "str", "int", "float"]
-    value: str
-
-operators = [
-    "<>",
-    ">=",
-    "<=",
-    "=",
-    ">",
-    "<",
-    "!=",
-]
+from typing import List, Tuple
+from .types import Token, operators, keywords
 
 def start_with_operator(code: str):
     return any(code.startswith(op) for op in operators)
@@ -52,9 +36,14 @@ def extract_name(code: str):
     for idx, char in enumerate(code):
         if char.isalnum():
             result = result + char
+        elif result.upper() in keywords:
+            return Token("keyword", result), code[idx:]
         else:
             return Token("name", result), code[idx:]
-    return Token("name", code), ""
+    if code.upper() in keywords:
+        return Token("keyword", code), ""
+    else:
+        return Token("name", code), ""
 
 def start_with_quoted_name(code: str):
     return code[0] == '"'
@@ -109,13 +98,24 @@ def extract_str(code: str):
         elif char == "'" and next_char != "'" and idx > 0:
             value = code[1:idx].replace("''", "'")
             return Token("str", value), code[next_idx:]
+    
+def start_with_wildcard(code: str):
+    return code[0] == "*"
+
+def extract_wildcard(code: str):
+    if not start_with_wildcard(code):
+        raise Exception(f"Not a valid wildcard, code: {code}")
+    return Token("wildcard", "*"), code[1:]
 
 
 
-def extract_tokens(code: str) -> List[str]:
+def scan(code: str) -> List[str]:
     result = []
     while len(code) > 0:
-        if start_with_name(code):
+        if start_with_wildcard(code):
+            token, code = extract_wildcard(code)
+            result.append(token)
+        elif start_with_name(code):
             token, code = extract_name(code)
             result.append(token)
         elif start_with_quoted_name(code):
