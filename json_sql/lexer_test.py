@@ -15,6 +15,15 @@ class TestTokens(TestCase):
             Token("name", "d"),
         ])
     
+    def test_joined_expression(self):
+        code = "select 1+1"
+        self.assertEqual(scan(code), [
+            Token("keyword", "select"),
+            Token("int", "1"),
+            Token("operator", "+"),
+            Token("int", "1")
+        ])
+    
     def test_joined_comparison(self):
         code = "select a=b"
         self.assertEqual(scan(code), [
@@ -87,4 +96,12 @@ class TestTokens(TestCase):
             Token("name", "users"),
             Token("keyword", "order by"),
             Token("name", "bar")
+        ])
+    
+    def test_expression(self):
+        code = "1+1"
+        self.assertEqual(scan(code), [
+            Token("int", "1"),
+            Token("operator", "+"),
+            Token("int", "1")
         ])

@@ -115,6 +115,9 @@ def scan(code: str) -> List[Token]:
         if start_with_wildcard(code):
             token, code = extract_wildcard(code)
             result.append(token)
+        elif start_with_number(code):
+            token, code = extract_number(code)
+            result.append(token)
         elif start_with_name(code):
             token, code = extract_name(code)
             result.append(token)

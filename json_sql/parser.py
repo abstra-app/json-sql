@@ -1,10 +1,10 @@
 from .types import Token
-from typing import List
+from typing import List, Tuple
 from .ast import Ast, Select, SelectField, From, NameExpression, SelectWildcard, \
     EqualExpression, NotEqualExpression, GreaterThanExpression, LessThanExpression, \
-    GreaterThanOrEqualExpression, Where, StringExpression, OrderBy, OrderField
+    GreaterThanOrEqualExpression, Where, StringExpression, OrderBy, OrderField, PlusExpression, MinusExpression, MultiplyExpression, DivideExpression, Expression
 
-def parse_order(tokens: List[Token]) -> List[Ast]:
+def parse_order(tokens: List[Token]) -> Tuple[OrderBy, List[Token]]:
     if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "ORDER BY":
         return None, tokens
     tokens = tokens[1:]
@@ -26,70 +26,40 @@ def parse_order(tokens: List[Token]) -> List[Ast]:
             break
     return OrderBy(fields=order_fields), tokens
 
+def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
+    ...
 
-def parse_where(tokens: List[Token]) -> List[Ast]:
+
+def parse_where(tokens: List[Token]) -> Tuple[Where, List[Token]]:
     if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "WHERE":
         return None, tokens
     
-    tokens = tokens[1:]
-    
-    if not tokens or tokens[0].type != "name":
-        raise ValueError("Expected field name after WHERE")
-    
-    field_name = tokens[0].value
-    tokens = tokens[1:]
-    
-    if not tokens or tokens[0].type != "operator":
-        raise ValueError("Expected operator after field name")
-    
-    operator = tokens[0].value
-    tokens = tokens[1:]
-    
-    if not tokens or (tokens[0].type != "str" and tokens[0].type != "number"):
-        raise ValueError(f"tokens={tokens}")
-    
-    value = tokens[0].value
-    tokens = tokens[1:]
-    
-    expression = None
-    if operator == "=":
-        expression = EqualExpression(left=NameExpression(name=field_name), right=StringExpression(value=value))
-    elif operator == "!=":
-        expression = NotEqualExpression(left=NameExpression(name=field_name), right=StringExpression(value=value))
-    elif operator == ">":
-        expression = GreaterThanExpression(left=NameExpression(name=field_name), right=StringExpression(value=value))
-    elif operator == "<":
-        expression = LessThanExpression(left=NameExpression(name=field_name), right=StringExpression(value=value))
-    elif operator == ">=":
-        expression = GreaterThanOrEqualExpression(left=NameExpression(name=field_name), right=StringExpression(value=value))
-    
+    expression, tokens = parse_expression(tokens[1:])
     return Where(expression=expression), tokens
 
-def parse_from(tokens: List[Token]) -> List[Ast]:
+def parse_from(tokens: List[Token]) -> Tuple[From, List[Token]]:
     if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "FROM":
-        return None, tokens
-    tokens = tokens[1:]
-    
-    if not tokens or tokens[0].type != "name":
-        raise ValueError("Expected table name after FROM")
-    
-    table_name = tokens[0].value
-    tokens = tokens[1:]
-    
-    alias = None
-    if tokens and tokens[0].type == "name":
-        alias = tokens[0].value
-        tokens = tokens[1:]
-    
-    return From(table=table_name, alias=alias), tokens
+        raise ValueError("Expected FROM statement")
 
-def parse_fields(tokens: List[Token]) -> List[Ast]:
+    exp, tokens = parse_expression(tokens[1:])
+    return Where(expression=exp), tokens
+
+def parse_fields(tokens: List[Token]) -> Tuple[List[SelectField], List[Token]]:
     field_parts = []
     if tokens[0].type == "wildcard":
         field_parts.append(SelectWildcard())
         tokens = tokens[1:]
     elif tokens[0].type == "name":
         field_parts.append(SelectField(expression=NameExpression(name=tokens[0].value)))
+        tokens = tokens[1:]
+    elif tokens[0].type == "str":
+        field_parts.append(SelectField(expression=StringExpression(value=tokens[0].value)))
+        tokens = tokens[1:]
+    elif tokens[0].type == "int":
+        field_parts.append(SelectField(expression=StringExpression(value=str(tokens[0].value))))
+        tokens = tokens[1:]
+    elif tokens[0].type == "float":
+        field_parts.append(SelectField(expression=StringExpression(value=str(tokens[0].value))))
         tokens = tokens[1:]
     
     if tokens and tokens[0].type == "comma":
@@ -98,7 +68,7 @@ def parse_fields(tokens: List[Token]) -> List[Ast]:
     return field_parts, tokens
     
 
-def parse_select(tokens: List[Token]) -> Select:
+def parse_select(tokens: List[Token]) -> Tuple[Select, List[Token]]:
     if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "SELECT":
         raise ValueError("Expected SELECT statement")
     tokens = tokens[1:]
