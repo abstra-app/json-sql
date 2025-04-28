@@ -1,5 +1,4 @@
-from typing import List, Optional, Literal, Union
-from .types import Token
+from typing import List, Optional, Literal, Union, Any
 from dataclasses import dataclass
 from abc import ABC
 
@@ -11,7 +10,8 @@ class Ast(ABC): ...
 class Command(Ast): ...
 
 @dataclass
-class Expression(Ast): ...
+class Expression(Ast):
+    value: Any
 
 @dataclass
 class NameExpression(Expression):

@@ -109,7 +109,7 @@ def extract_wildcard(code: str):
 
 
 
-def scan(code: str) -> List[str]:
+def scan(code: str) -> List[Token]:
     result = []
     while len(code) > 0:
         if start_with_wildcard(code):
