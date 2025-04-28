@@ -10,8 +10,7 @@ class Ast(ABC): ...
 class Command(Ast): ...
 
 @dataclass
-class Expression(Ast):
-    value: Any
+class Expression(Ast): ...
 
 @dataclass
 class NameExpression(Expression):
