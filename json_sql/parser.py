@@ -2,7 +2,7 @@ from .types import Token
 from typing import List
 from .ast import Ast, Select, SelectField, From, NameExpression, SelectWildcard, \
     EqualExpression, NotEqualExpression, GreaterThanExpression, LessThanExpression, \
-    GreaterThanOrEqualExpression, Where, StringExpression, Order, OrderField
+    GreaterThanOrEqualExpression, Where, StringExpression, OrderBy, OrderField
 
 def parse_order(tokens: List[Token]) -> List[Ast]:
     if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "ORDER BY":
@@ -18,13 +18,13 @@ def parse_order(tokens: List[Token]) -> List[Ast]:
             order = tokens[0].value.upper()
             tokens = tokens[1:]
         
-        order_fields.append(OrderField(expression=NameExpression(name=field_name), order=order))
+        order_fields.append(OrderField(expression=NameExpression(name=field_name), direction=order))
         
         if tokens and tokens[0].type == "comma":
             tokens = tokens[1:]
         else:
             break
-    return Order(fields=order_fields), tokens
+    return OrderBy(fields=order_fields), tokens
 
 
 def parse_where(tokens: List[Token]) -> List[Ast]:

@@ -16,5 +16,11 @@ class Table(BaseModel):
     columns: List[Column]
     data: List[dict] = []
 
-class TableSnapshot(BaseModel):
+class TablesSnapshot(BaseModel):
     tables: List[Table]
+
+    def get_table(self, name: str) -> Optional[Table]:
+        for table in self.tables:
+            if table.name == name:
+                return table
+        return None

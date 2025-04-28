@@ -10,7 +10,7 @@ from .ast import (
     EqualExpression,
     StringExpression,
     Where,
-    Order,
+    OrderBy,
     OrderField,
 )
 
@@ -83,9 +83,9 @@ class ParserTest(TestCase):
                 from_part=From(
                     table="users",
                 ),
-                order_part=Order(
+                order_part=OrderBy(
                     fields=[
-                        OrderField(expression=NameExpression(name="bar"), order="DESC")
+                        OrderField(expression=NameExpression(name="bar"), direction="DESC")
                     ]
                 ),
             ),

@@ -112,10 +112,10 @@ class SelectField(Ast):
 @dataclass
 class OrderField(Ast):
     expression: Expression
-    order: Literal["ASC", "DESC"]
+    direction: Literal["ASC", "DESC"]
 
 @dataclass
-class Order(Ast):
+class OrderBy(Ast):
     fields: List[OrderField]
 
 
@@ -124,8 +124,18 @@ class SelectWildcard(Ast):
     pass
 
 @dataclass
+class GroupBy(Ast):
+    fields: List[Expression]
+
+@dataclass
+class Limit(Ast):
+    limit: int
+    offset: int = 0
+@dataclass
 class Select(Command):
     field_parts: List[Union[SelectField, SelectWildcard]]
     from_part: Optional[From] = None
     where_part: Optional[Where] = None
-    order_part: Optional[Order] = None
+    order_part: Optional[OrderBy] = None
+    group_part: Optional[GroupBy] = None
+    limit_part: Optional[Limit] = None
