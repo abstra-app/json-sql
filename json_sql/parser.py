@@ -4,6 +4,35 @@ from .ast import Ast, Select, SelectField, From, NameExpression, SelectWildcard,
     EqualExpression, NotEqualExpression, GreaterThanExpression, LessThanExpression, \
     GreaterThanOrEqualExpression, Where, StringExpression
 
+def parse_order(tokens: List[Token]) -> List[Ast]:
+    if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "ORDER":
+        return None, tokens
+    
+    tokens = tokens[1:]
+    
+    if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "BY":
+        raise ValueError("Expected BY after ORDER")
+    
+    tokens = tokens[1:]
+    
+    order_fields = []
+    while tokens and (tokens[0].type == "name" or tokens[0].type == "wildcard"):
+        if tokens[0].type == "wildcard":
+            order_fields.append(SelectWildcard())
+            tokens = tokens[1:]
+        elif tokens[0].type == "name":
+            field_name = tokens[0].value
+            order_fields.append(SelectField(expression=NameExpression(name=field_name)))
+            tokens = tokens[1:]
+        
+        if not tokens or (tokens[0].type != "comma" and tokens[0].type != "keyword"):
+            break
+        
+        if tokens[0].type == "comma":
+            tokens = tokens[1:]
+    
+    return order_fields, tokens
+
 
 def parse_where(tokens: List[Token]) -> List[Ast]:
     if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "WHERE":
@@ -83,12 +112,14 @@ def parse_select(tokens: List[Token]) -> Select:
     field_parts, tokens = parse_fields(tokens)
     from_part, tokens = parse_from(tokens)
     where_part, tokens = parse_where(tokens)
+    order_part, tokens = parse_order(tokens)
     
    
     return Select(
         field_parts=field_parts,
         from_part=from_part,
         where_part=where_part,
+        order_part=order_part
     ), tokens
 
 
