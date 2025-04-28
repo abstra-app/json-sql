@@ -2,36 +2,29 @@ from .types import Token
 from typing import List
 from .ast import Ast, Select, SelectField, From, NameExpression, SelectWildcard, \
     EqualExpression, NotEqualExpression, GreaterThanExpression, LessThanExpression, \
-    GreaterThanOrEqualExpression, Where, StringExpression
+    GreaterThanOrEqualExpression, Where, StringExpression, Order, OrderField
 
 def parse_order(tokens: List[Token]) -> List[Ast]:
-    if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "ORDER":
+    if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "ORDER BY":
         return None, tokens
-    
     tokens = tokens[1:]
-    
-    if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "BY":
-        raise ValueError("Expected BY after ORDER")
-    
-    tokens = tokens[1:]
-    
     order_fields = []
-    while tokens and (tokens[0].type == "name" or tokens[0].type == "wildcard"):
-        if tokens[0].type == "wildcard":
-            order_fields.append(SelectWildcard())
-            tokens = tokens[1:]
-        elif tokens[0].type == "name":
-            field_name = tokens[0].value
-            order_fields.append(SelectField(expression=NameExpression(name=field_name)))
+    while tokens and tokens[0].type == "name":
+        field_name = tokens[0].value
+        tokens = tokens[1:]
+        
+        order = "ASC"
+        if tokens and tokens[0].type == "keyword" and tokens[0].value.upper() in ["ASC", "DESC"]:
+            order = tokens[0].value.upper()
             tokens = tokens[1:]
         
-        if not tokens or (tokens[0].type != "comma" and tokens[0].type != "keyword"):
+        order_fields.append(OrderField(expression=NameExpression(name=field_name), order=order))
+        
+        if tokens and tokens[0].type == "comma":
+            tokens = tokens[1:]
+        else:
             break
-        
-        if tokens[0].type == "comma":
-            tokens = tokens[1:]
-    
-    return order_fields, tokens
+    return Order(fields=order_fields), tokens
 
 
 def parse_where(tokens: List[Token]) -> List[Ast]:
@@ -126,7 +119,7 @@ def parse_select(tokens: List[Token]) -> Select:
 def parse(tokens: List[Token]) -> Ast:
     select_part, tokens = parse_select(tokens)
     if tokens:
-        raise ValueError("Unexpected tokens after SELECT statement")
+        raise ValueError("Unexpected tokens after SELECT statement. Remaining tokens: " + str(tokens))
     
     if select_part is not None:
         return select_part

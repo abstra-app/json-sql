@@ -34,7 +34,7 @@ def extract_name(code: str):
         raise Exception(f"Not a valid name, code: {code}")
     result = ""
     for idx, char in enumerate(code):
-        if char.isalnum():
+        if char.isalnum() or any(k.startswith((result + char).upper()) for k in keywords):
             result = result + char
         elif result.upper() in keywords:
             return Token("keyword", result), code[idx:]

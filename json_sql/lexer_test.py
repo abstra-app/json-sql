@@ -77,3 +77,14 @@ class TestTokens(TestCase):
             Token("keyword", "from"),
             Token("name", "users")
         ])
+
+    def test_order_by(self):
+        code = "select foo from users order by bar"
+        self.assertEqual(scan(code), [
+            Token("keyword", "select"),
+            Token("name", "foo"),
+            Token("keyword", "from"),
+            Token("name", "users"),
+            Token("keyword", "order by"),
+            Token("name", "bar")
+        ])
