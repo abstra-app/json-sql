@@ -1,72 +1,171 @@
 from .types import Token
 from typing import List, Tuple
-from .ast import Ast, Select, SelectField, From, NameExpression, SelectWildcard, \
-    EqualExpression, NotEqualExpression, GreaterThanExpression, LessThanExpression, \
-    GreaterThanOrEqualExpression, Where, StringExpression, OrderBy, OrderField, PlusExpression, MinusExpression, MultiplyExpression, DivideExpression, Expression
+from .ast import (
+    Ast,
+    Select,
+    SelectField,
+    IntExpression,
+    SelectWildcard,
+    From,
+    NameExpression,
+    EqualExpression,
+    FloatExpression,
+    LessThanOrEqualExpression,
+    NotEqualExpression,
+    GreaterThanExpression,
+    LessThanExpression,
+    GreaterThanOrEqualExpression,
+    Where,
+    StringExpression,
+    OrderBy,
+    OrderField,
+    PlusExpression,
+    MinusExpression,
+    MultiplyExpression,
+    DivideExpression,
+    Expression,
+)
+
 
 def parse_order(tokens: List[Token]) -> Tuple[OrderBy, List[Token]]:
-    if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "ORDER BY":
+    if (
+        not tokens
+        or tokens[0].type != "keyword"
+        or tokens[0].value.upper() != "ORDER BY"
+    ):
         return None, tokens
     tokens = tokens[1:]
     order_fields = []
     while tokens and tokens[0].type == "name":
         field_name = tokens[0].value
         tokens = tokens[1:]
-        
+
         order = "ASC"
-        if tokens and tokens[0].type == "keyword" and tokens[0].value.upper() in ["ASC", "DESC"]:
+        if (
+            tokens
+            and tokens[0].type == "keyword"
+            and tokens[0].value.upper() in ["ASC", "DESC"]
+        ):
             order = tokens[0].value.upper()
             tokens = tokens[1:]
-        
-        order_fields.append(OrderField(expression=NameExpression(name=field_name), direction=order))
-        
+
+        order_fields.append(
+            OrderField(expression=NameExpression(name=field_name), direction=order)
+        )
+
         if tokens and tokens[0].type == "comma":
             tokens = tokens[1:]
         else:
             break
     return OrderBy(fields=order_fields), tokens
 
+
 def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
-    ...
+    stack = []
+    while tokens:
+        next_token = tokens[0]
+        if next_token.type == "int":
+            stack.append(IntExpression(value=int(next_token.value)))
+            tokens = tokens[1:]
+        elif next_token.type == "float":
+            stack.append(FloatExpression(value=float(next_token.value)))
+            tokens = tokens[1:]
+        elif next_token.type == "str":
+            stack.append(StringExpression(value=next_token.value))
+            tokens = tokens[1:]
+        elif next_token.type == "name":
+            stack.append(NameExpression(name=next_token.value))
+            tokens = tokens[1:]
+        elif next_token.type == "operator":
+            operator = next_token.value
+            tokens = tokens[1:]
+            if operator == "+":
+                right, tokens = parse_expression(tokens)
+                left = stack.pop()
+                stack.append(PlusExpression(left=left, right=right))
+            elif operator == "-":
+                right, tokens = parse_expression(tokens)
+                left = stack.pop()
+                stack.append(MinusExpression(left=left, right=right))
+            elif operator == "*":
+                right, tokens = parse_expression(tokens)
+                left = stack.pop()
+                stack.append(MultiplyExpression(left=left, right=right))
+            elif operator == "/":
+                right, tokens = parse_expression(tokens)
+                left = stack.pop()
+                stack.append(DivideExpression(left=left, right=right))
+            elif operator == "=":
+                right, tokens = parse_expression(tokens)
+                left = stack.pop()
+                stack.append(EqualExpression(left=left, right=right))
+            elif operator == "<":
+                right, tokens = parse_expression(tokens)
+                left = stack.pop()
+                stack.append(LessThanExpression(left=left, right=right))
+            elif operator == "<=":
+                right, tokens = parse_expression(tokens)
+                left = stack.pop()
+                stack.append(LessThanOrEqualExpression(left=left, right=right))
+            elif operator == ">":
+                right, tokens = parse_expression(tokens)
+                left = stack.pop()
+                stack.append(GreaterThanExpression(left=left, right=right))
+            elif operator == ">=":
+                right, tokens = parse_expression(tokens)
+                left = stack.pop()
+                stack.append(GreaterThanOrEqualExpression(left=left, right=right))
+            elif operator == "!=":
+                right, tokens = parse_expression(tokens)
+                left = stack.pop()
+                stack.append(NotEqualExpression(left=left, right=right))
+            else:
+                raise ValueError(f"Unknown operator: {operator}")
+        else:
+            break
+    if len(stack) == 1:
+        return stack[0], tokens
+    else:
+        raise ValueError("Invalid expression: " + str(stack))
+
+
 
 
 def parse_where(tokens: List[Token]) -> Tuple[Where, List[Token]]:
     if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "WHERE":
         return None, tokens
-    
+
     expression, tokens = parse_expression(tokens[1:])
     return Where(expression=expression), tokens
 
+
 def parse_from(tokens: List[Token]) -> Tuple[From, List[Token]]:
-    if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "FROM":
+    if len(tokens) == 0:
+        return None, tokens
+    if tokens[0].type != "keyword" or tokens[0].value.upper() != "FROM":
         raise ValueError("Expected FROM statement")
 
-    exp, tokens = parse_expression(tokens[1:])
-    return Where(expression=exp), tokens
+    tokens = tokens[1:]
+
+    table = tokens[0]
+    assert table.type == "name"
+    return From(table=table.value), tokens[1:]
+
+
 
 def parse_fields(tokens: List[Token]) -> Tuple[List[SelectField], List[Token]]:
-    field_parts = []
-    if tokens[0].type == "wildcard":
-        field_parts.append(SelectWildcard())
-        tokens = tokens[1:]
-    elif tokens[0].type == "name":
-        field_parts.append(SelectField(expression=NameExpression(name=tokens[0].value)))
-        tokens = tokens[1:]
-    elif tokens[0].type == "str":
-        field_parts.append(SelectField(expression=StringExpression(value=tokens[0].value)))
-        tokens = tokens[1:]
-    elif tokens[0].type == "int":
-        field_parts.append(SelectField(expression=StringExpression(value=str(tokens[0].value))))
-        tokens = tokens[1:]
-    elif tokens[0].type == "float":
-        field_parts.append(SelectField(expression=StringExpression(value=str(tokens[0].value))))
-        tokens = tokens[1:]
-    
-    if tokens and tokens[0].type == "comma":
-        tokens = tokens[1:]
-    
-    return field_parts, tokens
-    
+    fields: List[SelectField] = []
+    while tokens and tokens[0].type != "comma":
+        if tokens[0].type == "keyword" and tokens[0].value.upper() == "FROM":
+            break
+        if tokens[0].type == "wildcard":
+            fields.append(SelectWildcard())
+            tokens = tokens[1:]
+        else:
+            exp, tokens = parse_expression(tokens)
+            fields.append(SelectField(expression=exp))
+    return fields, tokens
+
 
 def parse_select(tokens: List[Token]) -> Tuple[Select, List[Token]]:
     if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "SELECT":
@@ -76,21 +175,22 @@ def parse_select(tokens: List[Token]) -> Tuple[Select, List[Token]]:
     from_part, tokens = parse_from(tokens)
     where_part, tokens = parse_where(tokens)
     order_part, tokens = parse_order(tokens)
-    
-   
+
     return Select(
         field_parts=field_parts,
         from_part=from_part,
         where_part=where_part,
-        order_part=order_part
+        order_part=order_part,
     ), tokens
 
 
 def parse(tokens: List[Token]) -> Ast:
     select_part, tokens = parse_select(tokens)
     if tokens:
-        raise ValueError("Unexpected tokens after SELECT statement. Remaining tokens: " + str(tokens))
-    
+        raise ValueError(
+            "Unexpected tokens after SELECT statement. Remaining tokens: " + str(tokens)
+        )
+
     if select_part is not None:
         return select_part
     else:

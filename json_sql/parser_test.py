@@ -1,11 +1,13 @@
 from unittest import TestCase
-from .parser import parse
+from .parser import parse, parse_expression
 from .lexer import scan
 from .ast import (
     Select,
     From,
     SelectWildcard,
+    PlusExpression,
     SelectField,
+    IntExpression,
     NameExpression,
     EqualExpression,
     StringExpression,
@@ -88,5 +90,17 @@ class ParserTest(TestCase):
                         OrderField(expression=NameExpression(name="bar"), direction="DESC")
                     ]
                 ),
+            ),
+        )
+
+class ExpressionTest(TestCase):
+    def test_plus_expression(self):
+        exp = scan("1+1")
+        ast, tokens = parse_expression(exp)
+        self.assertEqual(
+            ast,
+            PlusExpression(
+                left=IntExpression(value=1),
+                right=IntExpression(value=1),
             ),
         )

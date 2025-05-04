@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 from .data_schema import TablesSnapshot
 from .ast import (
     Expression,
@@ -198,7 +198,9 @@ def apply_select_fields(fields: List[SelectField], data: List[dict], ctx: dict):
         for row in data
     ]
 
-def apply_from(from_part: From, tables: TablesSnapshot, ctx: dict) -> List[dict]:
+def apply_from(from_part: Optional[From], tables: TablesSnapshot, ctx: dict) -> List[dict]:
+    if from_part is None:
+        return [{}]
     table = tables.get_table(from_part.table)
     if not table:
         raise ValueError(f"Table {from_part.table} not found")
