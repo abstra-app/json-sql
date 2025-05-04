@@ -1,19 +1,23 @@
 from typing import List, Tuple
 from .types import Token, operators, keywords
 
+
 def start_with_operator(code: str):
     return any(code.startswith(op) for op in operators)
+
 
 def extract_operator(code: str):
     if start_with_operator(code):
         op = next(op for op in operators if code.startswith(op))
-        code = code[len(op):]
+        code = code[len(op) :]
         return Token("operator", op), code
     else:
         raise Exception(f"Not a valid operator, code: {code}")
 
+
 def start_with_space(code: str):
     return code[0].isspace()
+
 
 def extract_space(code: str) -> str:
     if not start_with_space(code):
@@ -26,15 +30,19 @@ def extract_space(code: str) -> str:
             return code[idx:]
     return ""
 
+
 def start_with_name(code: str):
     return code[0].isalnum()
+
 
 def extract_name(code: str):
     if not start_with_name(code):
         raise Exception(f"Not a valid name, code: {code}")
     result = ""
     for idx, char in enumerate(code):
-        if char.isalnum() or any(k.startswith((result + char).upper()) for k in keywords):
+        if char.isalnum() or any(
+            k.startswith((result + char).upper()) for k in keywords
+        ):
             result = result + char
         elif result.upper() in keywords:
             return Token("keyword", result), code[idx:]
@@ -45,13 +53,15 @@ def extract_name(code: str):
     else:
         return Token("name", code), ""
 
+
 def start_with_quoted_name(code: str):
     return code[0] == '"'
+
 
 def extract_quoted_name(code: str):
     if not start_with_quoted_name(code):
         raise Exception(f"Not a valid str, code: {code}")
-    
+
     enumeration = enumerate(code)
     for idx, char in enumeration:
         next_idx = idx + 1
@@ -63,10 +73,10 @@ def extract_quoted_name(code: str):
             return Token("name", value), code[next_idx:]
 
 
-
 def start_with_number(code: str):
     if code[0].isnumeric():
         return True
+
 
 def extract_number(code: str) -> Tuple[Token, str]:
     if not start_with_number(code):
@@ -82,13 +92,15 @@ def extract_number(code: str) -> Tuple[Token, str]:
             return Token(result_type, result), code[idx:]
     return Token(result_type, code), ""
 
+
 def start_with_str(code: str):
     return code[0] == "'"
+
 
 def extract_str(code: str):
     if not start_with_str(code):
         raise Exception(f"Not a valid str, code: {code}")
-    
+
     enumeration = enumerate(code)
     for idx, char in enumeration:
         next_idx = idx + 1
@@ -98,15 +110,16 @@ def extract_str(code: str):
         elif char == "'" and next_char != "'" and idx > 0:
             value = code[1:idx].replace("''", "'")
             return Token("str", value), code[next_idx:]
-    
+
+
 def start_with_wildcard(code: str):
     return code[0] == "*"
+
 
 def extract_wildcard(code: str):
     if not start_with_wildcard(code):
         raise Exception(f"Not a valid wildcard, code: {code}")
     return Token("wildcard", "*"), code[1:]
-
 
 
 def scan(code: str) -> List[Token]:
@@ -135,4 +148,3 @@ def scan(code: str) -> List[Token]:
         else:
             raise Exception(f"Invalid token, code: {code}")
     return result
-        

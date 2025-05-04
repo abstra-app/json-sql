@@ -3,6 +3,7 @@ from .parser import parse
 from .apply import apply_command
 from .data_schema import TablesSnapshot
 
+
 def eval_sql(code: str, tables: TablesSnapshot, ctx: dict):
     tokens = scan(code)
     ast = parse(tokens)

@@ -1,5 +1,5 @@
 from unittest import TestCase
-from .parser import parse, parse_expression
+from .parser import parse, parse_expression, parse_from
 from .lexer import scan
 from .ast import (
     Select,
@@ -55,6 +55,20 @@ class ParserTest(TestCase):
             ),
         )
 
+    def test_select_with_alias(self):
+        tokens = scan("select foo from bar as baz")
+        ast = parse(tokens)
+        self.assertEqual(
+            ast,
+            Select(
+                field_parts=[SelectField(expression=NameExpression(name="foo"))],
+                from_part=From(
+                    table="bar",
+                    alias="baz",
+                ),
+            ),
+        )
+
     def test_select_where(self):
         self.maxDiff = None
         tokens = scan("SELECT name FROM users WHERE name = 'John'")
@@ -87,11 +101,14 @@ class ParserTest(TestCase):
                 ),
                 order_part=OrderBy(
                     fields=[
-                        OrderField(expression=NameExpression(name="bar"), direction="DESC")
+                        OrderField(
+                            expression=NameExpression(name="bar"), direction="DESC"
+                        )
                     ]
                 ),
             ),
         )
+
 
 class ExpressionTest(TestCase):
     def test_plus_expression(self):
@@ -104,3 +121,41 @@ class ExpressionTest(TestCase):
                 right=IntExpression(value=1),
             ),
         )
+        self.assertEqual(tokens, [])
+
+    def test_equal_expression(self):
+        exp = scan("name = 'John'")
+        ast, tokens = parse_expression(exp)
+        self.assertEqual(
+            ast,
+            EqualExpression(
+                left=NameExpression(name="name"),
+                right=StringExpression(value="John"),
+            ),
+        )
+        self.assertEqual(tokens, [])
+
+
+class FromTest(TestCase):
+    def test_simple(self):
+        tokens = scan("FROM users")
+        ast, tokens = parse_from(tokens)
+        self.assertEqual(
+            ast,
+            From(
+                table="users",
+            ),
+        )
+        self.assertEqual(tokens, [])
+
+    def test_with_alias(self):
+        tokens = scan("FROM users AS u")
+        ast, tokens = parse_from(tokens)
+        self.assertEqual(
+            ast,
+            From(
+                table="users",
+                alias="u",
+            ),
+        )
+        self.assertEqual(tokens, [])

@@ -13,16 +13,20 @@ from .ast import (
     MultiplyExpression,
     DivideExpression,
     FloatExpression,
-    Limit
+    Limit,
 )
 
-from .apply import apply_expression, apply_where, apply_order_by, apply_group_by, apply_limit
+from .apply import (
+    apply_expression,
+    apply_where,
+    apply_order_by,
+    apply_group_by,
+    apply_limit,
+)
 
 
 class TestEvalExpression(TestCase):
     def test_addition(self):
-
-
         expression = PlusExpression(
             left=NameExpression(name="a"),
             right=NameExpression(name="b"),
@@ -32,8 +36,6 @@ class TestEvalExpression(TestCase):
         self.assertEqual(result, 3)
 
     def test_subtraction(self):
-
-
         expression = MinusExpression(
             left=NameExpression(name="a"),
             right=NameExpression(name="b"),
@@ -43,8 +45,6 @@ class TestEvalExpression(TestCase):
         self.assertEqual(result, 3)
 
     def test_multiplication(self):
-
-
         expression = MultiplyExpression(
             left=NameExpression(name="a"),
             right=NameExpression(name="b"),
@@ -54,8 +54,6 @@ class TestEvalExpression(TestCase):
         self.assertEqual(result, 12)
 
     def test_division(self):
-
-
         expression = DivideExpression(
             left=NameExpression(name="a"),
             right=NameExpression(name="b"),
@@ -71,24 +69,18 @@ class TestEvalExpression(TestCase):
         self.assertEqual(result, "foo")
 
     def test_int(self):
-
-
         expression = IntExpression(value=42)
         ctx = {}
         result = apply_expression(expression, ctx)
         self.assertEqual(result, 42)
 
     def test_float(self):
-
-
         expression = FloatExpression(value=3.14)
         ctx = {}
         result = apply_expression(expression, ctx)
         self.assertEqual(result, 3.14)
 
     def test_boolean(self):
-
-
         expression = NameExpression(name="TrUe")
         ctx = {}
         result = apply_expression(expression, ctx)
@@ -220,8 +212,9 @@ class TestEvalGroupBy(TestCase):
                     {"name": "Bob", "team": "bar"},
                     {"name": "David", "team": "bar"},
                 ],
-            }
+            },
         )
+
 
 class TestEvalLimit(TestCase):
     def test_limit(self):
@@ -233,9 +226,7 @@ class TestEvalLimit(TestCase):
             {"name": "Eve", "age": 22},
         ]
 
-        limit = Limit(
-            limit=3
-        )
+        limit = Limit(limit=3)
         result = apply_limit(data=data, limit=limit, ctx={})
 
         self.assertEqual(

@@ -28,35 +28,34 @@ from .ast import (
 
 
 def parse_order(tokens: List[Token]) -> Tuple[OrderBy, List[Token]]:
-    if (
-        not tokens
-        or tokens[0].type != "keyword"
-        or tokens[0].value.upper() != "ORDER BY"
-    ):
+    if not tokens:
         return None, tokens
-    tokens = tokens[1:]
-    order_fields = []
-    while tokens and tokens[0].type == "name":
-        field_name = tokens[0].value
-        tokens = tokens[1:]
 
-        order = "ASC"
+    assert tokens[0].type == "keyword" and tokens[0].value.upper() == "ORDER BY", (
+        "Expected ORDER BY statement, got: " + str(tokens[0])
+    )
+    tokens = tokens[1:]
+    if not tokens:
+        return None, tokens
+
+    order_fields: List[OrderField] = []
+    while tokens and tokens[0].type != "comma":
+        exp, tokens = parse_expression(tokens)
         if (
             tokens
             and tokens[0].type == "keyword"
-            and tokens[0].value.upper() in ["ASC", "DESC"]
+            and tokens[0].value.upper()
+            in [
+                "ASC",
+                "DESC",
+            ]
         ):
-            order = tokens[0].value.upper()
-            tokens = tokens[1:]
-
-        order_fields.append(
-            OrderField(expression=NameExpression(name=field_name), direction=order)
-        )
-
-        if tokens and tokens[0].type == "comma":
+            direction = tokens[0].value.upper()
             tokens = tokens[1:]
         else:
-            break
+            direction = "ASC"
+        order_fields.append(OrderField(expression=exp, direction=direction))
+
     return OrderBy(fields=order_fields), tokens
 
 
@@ -64,21 +63,17 @@ def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
     stack = []
     while tokens:
         next_token = tokens[0]
+        tokens = tokens[1:]
         if next_token.type == "int":
             stack.append(IntExpression(value=int(next_token.value)))
-            tokens = tokens[1:]
         elif next_token.type == "float":
             stack.append(FloatExpression(value=float(next_token.value)))
-            tokens = tokens[1:]
         elif next_token.type == "str":
             stack.append(StringExpression(value=next_token.value))
-            tokens = tokens[1:]
         elif next_token.type == "name":
             stack.append(NameExpression(name=next_token.value))
-            tokens = tokens[1:]
         elif next_token.type == "operator":
             operator = next_token.value
-            tokens = tokens[1:]
             if operator == "+":
                 right, tokens = parse_expression(tokens)
                 left = stack.pop()
@@ -122,6 +117,7 @@ def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
             else:
                 raise ValueError(f"Unknown operator: {operator}")
         else:
+            tokens = [next_token] + tokens
             break
     if len(stack) == 1:
         return stack[0], tokens
@@ -129,13 +125,11 @@ def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
         raise ValueError("Invalid expression: " + str(stack))
 
 
-
-
 def parse_where(tokens: List[Token]) -> Tuple[Where, List[Token]]:
     if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "WHERE":
         return None, tokens
-
-    expression, tokens = parse_expression(tokens[1:])
+    tokens = tokens[1:]
+    expression, tokens = parse_expression(tokens)
     return Where(expression=expression), tokens
 
 
@@ -146,11 +140,23 @@ def parse_from(tokens: List[Token]) -> Tuple[From, List[Token]]:
         raise ValueError("Expected FROM statement")
 
     tokens = tokens[1:]
-
     table = tokens[0]
-    assert table.type == "name"
-    return From(table=table.value), tokens[1:]
+    assert table.type == "name", f"Expected table name, got {table}"
 
+    tokens = tokens[1:]
+
+    if (
+        len(tokens) > 0
+        and tokens[0].type == "keyword"
+        and tokens[0].value.upper() == "AS"
+    ):
+        tokens = tokens[1:]
+        alias_token = tokens[0]
+        assert alias_token.type == "name", f"Expected alias name, got {alias_token}"
+        tokens = tokens[1:]
+        return From(table=table.value, alias=alias_token.value), tokens
+    else:
+        return From(table=table.value), tokens
 
 
 def parse_fields(tokens: List[Token]) -> Tuple[List[SelectField], List[Token]]:

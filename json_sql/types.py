@@ -21,6 +21,7 @@ keywords = [
     "FROM",
     "WHERE",
     "AND",
+    "AS",
     "OR",
     "NOT",
     "IN",
@@ -47,5 +48,7 @@ keywords = [
 
 @dataclass
 class Token:
-    type: Literal["name", "operator", "str", "int", "float", "keyword", "wildcard"]
+    type: Literal[
+        "name", "operator", "str", "int", "float", "keyword", "wildcard", "comma"
+    ]
     value: str

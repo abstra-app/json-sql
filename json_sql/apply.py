@@ -173,6 +173,7 @@ def apply_order_by(order_by: OrderBy, data: List[dict], ctx: dict):
         )
     return data
 
+
 def apply_group_by(group_by: GroupBy, data: List[dict], ctx: dict):
     groups: Dict[tuple, list] = {}
     for row in data:
@@ -184,10 +185,12 @@ def apply_group_by(group_by: GroupBy, data: List[dict], ctx: dict):
         groups[key].append(row)
     return groups
 
+
 def apply_limit(limit: Limit, data: List[dict], ctx: dict):
     start = limit.offset
     end = start + limit.limit
     return data[start:end]
+
 
 def apply_select_fields(fields: List[SelectField], data: List[dict], ctx: dict):
     return [
@@ -198,7 +201,10 @@ def apply_select_fields(fields: List[SelectField], data: List[dict], ctx: dict):
         for row in data
     ]
 
-def apply_from(from_part: Optional[From], tables: TablesSnapshot, ctx: dict) -> List[dict]:
+
+def apply_from(
+    from_part: Optional[From], tables: TablesSnapshot, ctx: dict
+) -> List[dict]:
     if from_part is None:
         return [{}]
     table = tables.get_table(from_part.table)
@@ -218,6 +224,7 @@ def apply_from(from_part: Optional[From], tables: TablesSnapshot, ctx: dict) -> 
             ]
     return data
 
+
 def apply_select(select: Select, tables: TablesSnapshot, ctx: dict):
     data = apply_from(select.from_part, tables, ctx)
     if select.where_part:
@@ -231,6 +238,7 @@ def apply_select(select: Select, tables: TablesSnapshot, ctx: dict):
     if select.field_parts:
         data = apply_select_fields(select.field_parts, data, ctx)
     return data
+
 
 def apply_command(command: Command, tables: TablesSnapshot, ctx: dict):
     if isinstance(command, Select):
