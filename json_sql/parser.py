@@ -169,7 +169,20 @@ def parse_fields(tokens: List[Token]) -> Tuple[List[SelectField], List[Token]]:
             tokens = tokens[1:]
         else:
             exp, tokens = parse_expression(tokens)
-            fields.append(SelectField(expression=exp))
+            field = SelectField(expression=exp)
+            if (
+                tokens
+                and tokens[0].type == "keyword"
+                and tokens[0].value.upper() == "AS"
+            ):
+                tokens = tokens[1:]
+                alias_token = tokens[0]
+                assert (
+                    alias_token.type == "name"
+                ), f"Expected alias name, got {alias_token}"
+                field.alias = alias_token.value
+                tokens = tokens[1:]
+            fields.append(field)
     return fields, tokens
 
 
