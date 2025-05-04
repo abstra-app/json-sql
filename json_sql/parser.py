@@ -1,4 +1,4 @@
-from .types import Token
+from .tokens import Token
 from typing import List, Tuple
 from .ast import (
     Ast,

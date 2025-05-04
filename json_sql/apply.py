@@ -1,5 +1,5 @@
 from typing import List, Dict, Optional
-from .data_schema import TablesSnapshot
+from .tables import TablesSnapshot
 from .ast import (
     Expression,
     StringExpression,

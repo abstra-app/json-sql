@@ -1,6 +1,6 @@
 from unittest import TestCase
 from .eval import eval_sql
-from .data_schema import TablesSnapshot, Table, Column
+from .tables import TablesSnapshot, Table, Column
 
 
 class TestEvalSQL(TestCase):
