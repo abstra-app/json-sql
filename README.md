@@ -1,0 +1,30 @@
+# json_sql
+
+`json_sql` is a Python library that allows you to run sql queries on JSON data. It is designed to be simple and easy to use, while providing powerful features for querying and manipulating JSON data.
+
+## Usage
+
+Assuming you have a directory structure like this:
+
+```
+.
+├── organizations.json
+├── projects.json
+└── users.json
+```
+
+You can query the JSON files using SQL syntax. For example, to get all users from the `users` file, you can run:
+
+```sh
+json_sql "select * from users"
+```
+
+This will return all the users in the `users.json` file.
+
+## Installation
+
+You can install `json_sql` using pip:
+
+```sh
+pip install json_sql
+```
