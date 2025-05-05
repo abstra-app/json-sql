@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "json-sql"
-version = "0.1.0"
+version = "0.0.0"
 description = "Run SQL queries on JSON files"
 authors = ["Bruno Vieira Costa <bruno@abstra.app>"]
 readme = "README.md"
