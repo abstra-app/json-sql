@@ -1,12 +1,12 @@
 from unittest import TestCase
 from .eval import eval_sql
-from .tables import TablesSnapshot, Table, Column
+from .tables import InMemoryTables
 
 
 class TestEvalSQL(TestCase):
     def test_eval_sql(self):
         code = "select 1+1"
-        tables = TablesSnapshot(
+        tables = InMemoryTables(
             tables=[],
         )
         ctx = {}
@@ -15,7 +15,7 @@ class TestEvalSQL(TestCase):
 
     def test_eval_select_alias(self):
         code = "select 1+1 as a"
-        tables = TablesSnapshot(
+        tables = InMemoryTables(
             tables=[],
         )
         ctx = {}

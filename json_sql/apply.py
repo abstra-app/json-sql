@@ -1,5 +1,5 @@
 from typing import List, Dict, Optional
-from .tables import TablesSnapshot
+from .tables import ITablesSnapshot
 from .ast import (
     Expression,
     StringExpression,
@@ -203,7 +203,7 @@ def apply_select_fields(fields: List[SelectField], data: List[dict], ctx: dict):
 
 
 def apply_from(
-    from_part: Optional[From], tables: TablesSnapshot, ctx: dict
+    from_part: Optional[From], tables: ITablesSnapshot, ctx: dict
 ) -> List[dict]:
     if from_part is None:
         return [{}]
@@ -225,7 +225,7 @@ def apply_from(
     return data
 
 
-def apply_select(select: Select, tables: TablesSnapshot, ctx: dict):
+def apply_select(select: Select, tables: ITablesSnapshot, ctx: dict):
     data = apply_from(select.from_part, tables, ctx)
     if select.where_part:
         data = apply_where(select.where_part, data, ctx)
@@ -240,7 +240,7 @@ def apply_select(select: Select, tables: TablesSnapshot, ctx: dict):
     return data
 
 
-def apply_command(command: Command, tables: TablesSnapshot, ctx: dict):
+def apply_command(command: Command, tables: ITablesSnapshot, ctx: dict):
     if isinstance(command, Select):
         return apply_select(command, tables, ctx)
     else:
