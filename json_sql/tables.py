@@ -16,6 +16,9 @@ class Column(BaseModel):
     is_primary_key: bool = False
     foreign_key: Optional[ForeignKey] = None
 
+    def __hash__(self):
+        return hash((self.name, self.type, self.is_primary_key, self.foreign_key))
+
 
 class Table(BaseModel):
     name: str
