@@ -110,7 +110,7 @@ def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
                 right, tokens = parse_expression(tokens)
                 left = stack.pop()
                 stack.append(GreaterThanOrEqualExpression(left=left, right=right))
-            elif operator == "!=":
+            elif operator == "!=" or operator == "<>":
                 right, tokens = parse_expression(tokens)
                 left = stack.pop()
                 stack.append(NotEqualExpression(left=left, right=right))
