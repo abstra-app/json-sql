@@ -1,5 +1,6 @@
 from typing import List, Dict, Optional
 from .tables import ITablesSnapshot
+from .field_name import field_name
 from .ast import (
     Expression,
     StringExpression,
@@ -195,7 +196,9 @@ def apply_limit(limit: Limit, data: List[dict], ctx: dict):
 def apply_select_fields(fields: List[SelectField], data: List[dict], ctx: dict):
     return [
         {
-            field.alias: apply_expression(field.expression, {**ctx, **row})
+            field_name(field) or field.expression: apply_expression(
+                field.expression, {**ctx, **row}
+            )
             for field in fields
         }
         for row in data
