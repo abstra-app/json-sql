@@ -1,6 +1,6 @@
 # json_sql
 
-`json_sql` is a Python library that allows you to run sql queries on JSON data. It is designed to be simple and easy to use, while providing powerful features for querying and manipulating JSON data.
+`json_sql` is a Python library that allows you to **run SQL queries on JSON data**. It is designed to be simple and easy to use, while providing powerful features for querying and manipulating JSON data.
 
 ## Usage
 
