@@ -25,7 +25,7 @@ from .apply import (
 )
 
 
-class TestEvalExpression(TestCase):
+class TestApplyExpression(TestCase):
     def test_addition(self):
         expression = PlusExpression(
             left=NameExpression(name="a"),
@@ -87,7 +87,7 @@ class TestEvalExpression(TestCase):
         self.assertEqual(result, True)
 
 
-class TestEvalWhere(TestCase):
+class TestApplyWhere(TestCase):
     def test_where_no_context(self):
         where = Where(
             expression=GreaterThanExpression(
@@ -149,7 +149,7 @@ class TestEvalWhere(TestCase):
         )
 
 
-class TestEvalOrderBy(TestCase):
+class TestApplyOrderBy(TestCase):
     def test_order_by(self):
         order_by = OrderBy(
             fields=[
@@ -182,7 +182,7 @@ class TestEvalOrderBy(TestCase):
         )
 
 
-class TestEvalGroupBy(TestCase):
+class TestApplyGroupBy(TestCase):
     def test_group_by(self):
         group_by = GroupBy(
             fields=[
@@ -216,7 +216,7 @@ class TestEvalGroupBy(TestCase):
         )
 
 
-class TestEvalLimit(TestCase):
+class TestApplyLimit(TestCase):
     def test_limit(self):
         data = [
             {"name": "Alice", "age": 20},

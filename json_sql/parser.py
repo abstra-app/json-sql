@@ -4,6 +4,7 @@ from .ast import (
     Ast,
     Select,
     SelectField,
+    Limit,
     IntExpression,
     SelectWildcard,
     From,
@@ -186,6 +187,29 @@ def parse_fields(tokens: List[Token]) -> Tuple[List[SelectField], List[Token]]:
     return fields, tokens
 
 
+def parse_limit(tokens: List[Token]) -> Tuple[Limit, List[Token]]:
+    if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "LIMIT":
+        return None, tokens
+
+    tokens = tokens[1:]
+    limit_token = tokens[0]
+    assert limit_token.type == "int", f"Expected limit value, got {limit_token}"
+    limit_value = limit_token.value
+    limit_int = int(limit_value)
+    tokens = tokens[1:]
+
+    if tokens and tokens[0].type == "keyword" and tokens[0].value.upper() == "OFFSET":
+        tokens = tokens[1:]
+        offset_token = tokens[0]
+        assert offset_token.type == "int", f"Expected offset value, got {offset_token}"
+        offset_value = offset_token.value
+        offset_int = int(offset_value)
+        tokens = tokens[1:]
+        return Limit(limit=limit_int, offset=offset_int), tokens
+    else:
+        return Limit(limit=limit_int), tokens
+
+
 def parse_select(tokens: List[Token]) -> Tuple[Select, List[Token]]:
     if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "SELECT":
         raise ValueError("Expected SELECT statement")
@@ -194,12 +218,14 @@ def parse_select(tokens: List[Token]) -> Tuple[Select, List[Token]]:
     from_part, tokens = parse_from(tokens)
     where_part, tokens = parse_where(tokens)
     order_part, tokens = parse_order(tokens)
+    limit_part, tokens = parse_limit(tokens)
 
     return Select(
         field_parts=field_parts,
         from_part=from_part,
         where_part=where_part,
         order_part=order_part,
+        limit_part=limit_part,
     ), tokens
 
 

@@ -1,5 +1,5 @@
 from unittest import TestCase
-from .parser import parse, parse_expression, parse_from
+from .parser import parse, parse_expression, parse_from, parse_limit
 from .lexer import scan
 from .ast import (
     Select,
@@ -13,6 +13,7 @@ from .ast import (
     StringExpression,
     Where,
     OrderBy,
+    Limit,
     OrderField,
 )
 
@@ -156,6 +157,31 @@ class FromTest(TestCase):
             From(
                 table="users",
                 alias="u",
+            ),
+        )
+        self.assertEqual(tokens, [])
+
+
+class LimitTest(TestCase):
+    def test_limit(self):
+        tokens = scan("LIMIT 10")
+        ast, tokens = parse_limit(tokens)
+        self.assertEqual(
+            ast,
+            Limit(
+                limit=10,
+            ),
+        )
+        self.assertEqual(tokens, [])
+
+    def test_limit_with_offset(self):
+        tokens = scan("LIMIT 10 OFFSET 5")
+        ast, tokens = parse_limit(tokens)
+        self.assertEqual(
+            ast,
+            Limit(
+                limit=10,
+                offset=5,
             ),
         )
         self.assertEqual(tokens, [])

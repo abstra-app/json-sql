@@ -30,6 +30,7 @@ keywords = [
     "IS",
     "NULL",
     "EXISTS",
+    "OFFSET",
     "DISTINCT",
     "ORDER BY",
     "GROUP BY",
@@ -43,6 +44,7 @@ keywords = [
     "CROSS JOIN",
     "NATURAL JOIN",
     "JOIN",
+    "LIMIT",
 ]
 
 
