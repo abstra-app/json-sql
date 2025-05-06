@@ -27,7 +27,7 @@ else:
     VERSION = match.group(1) if match else "0.0.0"
 
 setup(
-    name="json_sql",
+    name="abstra_json_sql",
     license="MIT",
     version=VERSION,
     description="run SQL queries on JSON data",
