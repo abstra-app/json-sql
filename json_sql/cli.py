@@ -28,7 +28,7 @@ def print_result(result: List[dict], format: Literal["json", "csv"]):
                 writer.writerow(row)
 
 
-if __name__ == "__main__":
+def main():
     parser = ArgumentParser(description="Run SQL queries on JSON files.")
     parser.add_argument("--code", type=str, help="SQL query to execute", default=None)
     parser.add_argument(
@@ -74,3 +74,7 @@ if __name__ == "__main__":
             except Exception as e:
                 print(f"Error: {e}")
                 continue
+
+
+if __name__ == "__main__":
+    main()

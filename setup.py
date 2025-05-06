@@ -39,4 +39,9 @@ setup(
     url="https://github.com/abstra-app/json-sql",
     packages=find_packages(exclude=["tests"]),
     install_requires=REQUIREMENTS,
+    entry_points={
+        "console_scripts": [
+            "abstra_json_sql=abstra_json_sql.cli:main",
+        ],
+    },
 )

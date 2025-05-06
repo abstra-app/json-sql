@@ -16,7 +16,7 @@ Assuming you have a directory structure like this:
 You can query the JSON files using SQL syntax. For example, to get all users from the `users` file, you can run:
 
 ```sh
-json_sql "select * from users"
+abstra-json-sql "select * from users"
 ```
 
 This will return all the users in the `users.json` file.
