@@ -41,7 +41,7 @@ setup(
     install_requires=REQUIREMENTS,
     entry_points={
         "console_scripts": [
-            "abstra_json_sql=abstra_json_sql.cli:main",
+            "abstra-json-sql=abstra_json_sql.cli:main",
         ],
     },
 )
