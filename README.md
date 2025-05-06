@@ -26,5 +26,5 @@ This will return all the users in the `users.json` file.
 You can install `json_sql` using pip:
 
 ```sh
-pip install json_sql
+pip install abstra-json-sql
 ```
