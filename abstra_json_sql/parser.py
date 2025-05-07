@@ -7,6 +7,7 @@ from .ast import (
     Limit,
     IntExpression,
     SelectWildcard,
+    FunctionCallExpression,
     From,
     NameExpression,
     EqualExpression,
@@ -72,7 +73,24 @@ def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
         elif next_token.type == "str":
             stack.append(StringExpression(value=next_token.value))
         elif next_token.type == "name":
-            stack.append(NameExpression(name=next_token.value))
+            name_value = next_token.value
+            if tokens and tokens[0].type == "paren_left":
+                tokens = tokens[1:]
+                args = []
+                while True:
+                    param_expression, tokens = parse_expression(tokens)
+                    if tokens and tokens[0].type == "comma":
+                        tokens = tokens[1:]
+                    elif tokens and tokens[0].type == "paren_right":
+                        tokens = tokens[1:]
+                        break
+                    else:
+                        raise ValueError("Expected comma or closing parenthesis")
+                    args.append(param_expression)
+
+                stack.append(FunctionCallExpression(name=name_value, args=args))
+            else:
+                stack.append(NameExpression(name=name_value))
         elif next_token.type == "operator":
             operator = next_token.value
             if operator == "+":

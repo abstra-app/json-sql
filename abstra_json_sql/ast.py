@@ -21,6 +21,12 @@ class NameExpression(Expression):
 
 
 @dataclass
+class FunctionCallExpression(Expression):
+    name: str
+    args: List[Expression]
+
+
+@dataclass
 class StringExpression(Expression):
     value: str
 

@@ -12,6 +12,7 @@ from .ast import (
     SelectField,
     Where,
     GroupBy,
+    FunctionCallExpression,
     Command,
     PlusExpression,
     OrderBy,
@@ -149,6 +150,10 @@ def apply_expression(expression: Expression, ctx: dict):
             raise ValueError(
                 f"Unsupported types for less than or equal: {type(left_value)}, {type(right_value)}"
             )
+    elif isinstance(expression, FunctionCallExpression):
+        raise NotImplementedError(
+            f"Function call expressions are not implemented: {expression.name}"
+        )
     else:
         raise ValueError(f"Unsupported expression type: {type(expression)}")
 

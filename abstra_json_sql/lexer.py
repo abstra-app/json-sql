@@ -145,6 +145,15 @@ def scan(code: str) -> List[Token]:
             result.append(token)
         elif start_with_space(code):
             code = extract_space(code)
+        elif code[0] == "(":
+            result.append(Token("paren_left", "("))
+            code = code[1:]
+        elif code[0] == ")":
+            result.append(Token("paren_right", ")"))
+            code = code[1:]
+        elif code[0] == ",":
+            result.append(Token("comma", ","))
+            code = code[1:]
         else:
             raise Exception(f"Invalid token, code: {code}")
     return result

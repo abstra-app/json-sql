@@ -51,6 +51,15 @@ keywords = [
 @dataclass
 class Token:
     type: Literal[
-        "name", "operator", "str", "int", "float", "keyword", "wildcard", "comma"
+        "name",
+        "operator",
+        "str",
+        "int",
+        "float",
+        "keyword",
+        "wildcard",
+        "comma",
+        "paren_left",
+        "paren_right",
     ]
     value: str
