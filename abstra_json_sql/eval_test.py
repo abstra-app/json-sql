@@ -22,7 +22,7 @@ class TestEvalSQL(TestCase):
         result = eval_sql(code=code, tables=tables, ctx=ctx)
         self.assertEqual(result, [{"a": 2}])
 
-    def test_eval_aggregate(self):
+    def test_eval_aggregate_sum(self):
         code = "select sum(foo) from bar"
         tables = InMemoryTables(
             tables=[
