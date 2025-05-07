@@ -29,6 +29,11 @@ from .ast import (
 )
 
 
+def is_aggregate_function(name: str) -> bool:
+    # Placeholder for aggregate function check
+    return name.lower() in ["sum", "avg", "count", "min", "max"]
+
+
 def apply_expression(expression: Expression, ctx: dict):
     if isinstance(expression, StringExpression):
         return expression.value
@@ -151,9 +156,18 @@ def apply_expression(expression: Expression, ctx: dict):
                 f"Unsupported types for less than or equal: {type(left_value)}, {type(right_value)}"
             )
     elif isinstance(expression, FunctionCallExpression):
-        raise NotImplementedError(
-            f"Function call expressions are not implemented: {expression.name}"
-        )
+        if is_aggregate_function(expression.name):
+            raise NotImplementedError(
+                f"Function call expressions are not implemented: {expression.name}"
+            )
+        else:
+            args = [apply_expression(arg, ctx) for arg in expression.args]
+            if expression.name == "lower":
+                return args[0].lower()
+            elif expression.name == "upper":
+                return args[0].upper()
+            else:
+                raise ValueError(f"Unknown function: {expression.name}")
     else:
         raise ValueError(f"Unsupported expression type: {type(expression)}")
 

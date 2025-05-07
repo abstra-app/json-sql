@@ -1,4 +1,4 @@
-from .ast import SelectField, NameExpression
+from .ast import SelectField, NameExpression, FunctionCallExpression
 
 
 def field_name(field: SelectField) -> str:
@@ -8,6 +8,8 @@ def field_name(field: SelectField) -> str:
     if field.alias:
         return field.alias
     elif isinstance(field.expression, NameExpression):
+        return field.expression.name
+    elif isinstance(field.expression, FunctionCallExpression):
         return field.expression.name
     else:
         return "?column?"

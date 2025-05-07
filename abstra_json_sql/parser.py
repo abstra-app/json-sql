@@ -79,6 +79,7 @@ def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
                 args = []
                 while True:
                     param_expression, tokens = parse_expression(tokens)
+                    args.append(param_expression)
                     if tokens and tokens[0].type == "comma":
                         tokens = tokens[1:]
                     elif tokens and tokens[0].type == "paren_right":
@@ -86,7 +87,6 @@ def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
                         break
                     else:
                         raise ValueError("Expected comma or closing parenthesis")
-                    args.append(param_expression)
 
                 stack.append(FunctionCallExpression(name=name_value, args=args))
             else:

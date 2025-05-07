@@ -6,6 +6,7 @@ from .ast import (
     From,
     SelectWildcard,
     PlusExpression,
+    FunctionCallExpression,
     SelectField,
     IntExpression,
     NameExpression,
@@ -132,6 +133,18 @@ class ExpressionTest(TestCase):
             EqualExpression(
                 left=NameExpression(name="name"),
                 right=StringExpression(value="John"),
+            ),
+        )
+        self.assertEqual(tokens, [])
+
+    def test_function_call_expression(self):
+        tokens = scan("SUM(foo)")
+        ast, tokens = parse_expression(tokens)
+        self.assertEqual(
+            ast,
+            FunctionCallExpression(
+                name="SUM",
+                args=[NameExpression(name="foo")],
             ),
         )
         self.assertEqual(tokens, [])
