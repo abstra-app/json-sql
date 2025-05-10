@@ -321,7 +321,7 @@ def apply_expression(expression: Expression, ctx: dict):
                 assert (
                     len(expression.args) == 2
                 ), "String_agg function requires two arguments"
-                separator = expression.args[1].value
+                separator = apply_expression(expression.args[1], ctx)
                 return separator.join(
                     str(apply_expression(expression.args[0], {**ctx, **row}))
                     for row in ctx["__grouped_rows"]
