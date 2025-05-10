@@ -1,5 +1,7 @@
 # abstra-json-sql
 
+> **warning**: This project is in its early stages and is not yet ready for production use. The API may change, and there may be bugs. Use at your own risk.
+
 `abstra-json-sql` is a Python library that allows you to **run SQL queries on JSON data**. It is designed to be simple and easy to use, while providing powerful features for querying and manipulating JSON data.
 
 ## Installation
