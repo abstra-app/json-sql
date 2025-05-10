@@ -2,6 +2,14 @@
 
 `abstra-json-sql` is a Python library that allows you to **run SQL queries on JSON data**. It is designed to be simple and easy to use, while providing powerful features for querying and manipulating JSON data.
 
+## Installation
+
+You can install `abstra-json-sql` using pip:
+
+```sh
+pip install abstra-json-sql
+```
+
 ## Usage
 
 Assuming you have a directory structure like this:
@@ -21,10 +29,24 @@ abstra-json-sql "select * from users"
 
 This will return all the users in the `users.json` file.
 
-## Installation
+## Supported SQL Syntax
 
-You can install `abstra-json-sql` using pip:
+- [.] `SELECT`:
+    - [x] `FROM`
+    - [x] `WHERE`
+    - [x] `GROUP BY`
+    - [x] `HAVING`
+    - [ ] `WINDOW`
+    - [x] `ORDER BY`
+    - [x] `LIMIT`
+    - [x] `OFFSET`
+    - [ ] `FETCH`
+    - [ ] `FOR`
 
-```sh
-pip install abstra-json-sql
-```
+- [ ] `INSERT`
+- [ ] `UPDATE`
+- [ ] `DELETE`
+
+- [ ] `CREATE`
+- [ ] `DROP`
+- [ ] `ALTER`
