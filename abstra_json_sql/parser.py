@@ -274,7 +274,7 @@ def parse_fields(tokens: List[Token]) -> Tuple[List[SelectField], List[Token]]:
         if tokens[0].type == "keyword" and tokens[0].value.upper() == "FROM":
             break
         elif tokens[0].type == "wildcard":
-            fields.append(Wildcard())
+            fields.append(SelectField(Wildcard()))
             tokens = tokens[1:]
         elif tokens[0].type == "comma":
             tokens = tokens[1:]

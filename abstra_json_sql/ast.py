@@ -172,7 +172,7 @@ class Having(Ast):
 
 @dataclass
 class SelectField(Ast):
-    expression: Expression
+    expression: Union[Expression, Wildcard]
     alias: Optional[str] = None
 
 
@@ -200,7 +200,7 @@ class Limit(Ast):
 
 @dataclass
 class Select(Command):
-    field_parts: List[Union[SelectField, Wildcard]]
+    field_parts: List[SelectField]
     from_part: Optional[From] = None
     where_part: Optional[Where] = None
     group_part: Optional[GroupBy] = None

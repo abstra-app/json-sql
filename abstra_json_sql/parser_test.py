@@ -38,7 +38,7 @@ class ParserTest(TestCase):
         self.assertEqual(
             ast,
             Select(
-                field_parts=[Wildcard()],
+                field_parts=[SelectField(Wildcard())],
                 from_part=From(
                     table="users",
                 ),

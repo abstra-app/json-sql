@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 from .tables import ITablesSnapshot
 from .field_name import field_name, expression_name
 from .ast import (
@@ -11,6 +11,7 @@ from .ast import (
     From,
     SelectField,
     Where,
+    Wildcard,
     GroupBy,
     FunctionCallExpression,
     Command,
@@ -22,7 +23,6 @@ from .ast import (
     IsExpression,
     FalseExpression,
     TrueExpression,
-    Wildcard,
     OrderBy,
     MinusExpression,
     MultiplyExpression,
@@ -33,7 +33,6 @@ from .ast import (
     GreaterThanOrEqualExpression,
     LessThanExpression,
     LessThanOrEqualExpression,
-    Wildcard,
     Limit,
 )
 from dataclasses import dataclass
@@ -355,6 +354,10 @@ def apply_expression(expression: Expression, ctx: dict):
                 raise ValueError(f"Unknown function: {expression.name}")
     elif isinstance(expression, NullExpression):
         return None
+    elif isinstance(expression, FalseExpression):
+        return False
+    elif isinstance(expression, TrueExpression):
+        return True
     elif isinstance(expression, IsExpression):
         left_value = apply_expression(expression.left, ctx)
         right_value = apply_expression(expression.right, ctx)
@@ -503,15 +506,20 @@ def has_aggregation_fields(fields: List[SelectField]) -> bool:
 
 
 def apply_select_fields(fields: List[SelectField], data: List[dict], ctx: dict):
-    return [
-        {
-            field_name(field) or field.expression: apply_expression(
-                field.expression, {**ctx, **row}
-            )
-            for field in fields
-        }
-        for row in data
-    ]
+    result = []
+    for row in data:
+        result_row = {}
+        for field in fields:
+            if isinstance(field.expression, Wildcard):
+                result_row.update(row)
+            elif isinstance(field.expression, Expression):
+                result_row[field_name(field)] = apply_expression(
+                    field.expression, {**ctx, **row}
+                )
+            else:
+                raise ValueError(f"Unsupported field type: {type(field)}")
+        result.append(result_row)
+    return result
 
 
 def apply_from(

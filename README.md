@@ -31,7 +31,13 @@ This will return all the users in the `users.json` file.
 
 ## Supported SQL Syntax
 
-- [ ] `SELECT`:
+- [ ] `WITH`
+    - [ ] `RECURSIVE`
+
+- [ ] `SELECT`
+    - [ ] `ALL`
+    - [ ] `DISTINCT`
+    - [ ] `*`
     - [x] `FROM`
     - [x] `WHERE`
     - [x] `GROUP BY`
