@@ -134,3 +134,7 @@ class TestTokens(TestCase):
         self.assertEqual(
             scan(code), [Token("int", "1"), Token("operator", "+"), Token("int", "1")]
         )
+
+    def test_name_expression_with_underscore(self):
+        code = "foo_bar"
+        self.assertEqual(scan(code), [Token("name", "foo_bar")])

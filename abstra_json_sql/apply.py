@@ -25,14 +25,27 @@ from .ast import (
     GreaterThanOrEqualExpression,
     LessThanExpression,
     LessThanOrEqualExpression,
-    WildcardExpression,
+    Wildcard,
     Limit,
 )
 
 
 def is_aggregate_function(name: str) -> bool:
     # Placeholder for aggregate function check
-    return name.lower() in ["sum", "avg", "count", "min", "max"]
+    return name.lower() in [
+        "sum",
+        "avg",
+        "count",
+        "min",
+        "max",
+        "every",
+        "bool_or",
+        "bool_and",
+        "bit_or",
+        "bit_and",
+        "array_agg",
+        "string_agg",
+    ]
 
 
 def apply_expression(expression: Expression, ctx: dict):
@@ -160,17 +173,161 @@ def apply_expression(expression: Expression, ctx: dict):
         if is_aggregate_function(expression.name):
             if expression.name.lower() == "count":
                 assert len(expression.args) == 1, "Count function requires one argument"
-                if isinstance(expression.args[0], WildcardExpression):
+                if isinstance(expression.args[0], Wildcard):
                     return len(ctx["__grouped_rows"])
                 elif isinstance(expression.args[0], NameExpression):
                     return len(
                         [
                             row
                             for row in ctx["__grouped_rows"]
-                            if expression.args[0].name in row
-                            and row[expression.args[0].name] is not None
+                            if apply_expression(expression.args[0], {**ctx, **row})
+                            is not None
+                            and apply_expression(expression.args[0], {**ctx, **row})
+                            is not None
                         ]
                     )
+            elif expression.name.lower() == "sum":
+                assert len(expression.args) == 1, "Sum function requires one argument"
+                return sum(
+                    apply_expression(expression.args[0], {**ctx, **row})
+                    for row in ctx["__grouped_rows"]
+                    if apply_expression(expression.args[0], {**ctx, **row}) is not None
+                    and isinstance(
+                        apply_expression(expression.args[0], {**ctx, **row}),
+                        (int, float),
+                    )
+                )
+            elif expression.name.lower() == "avg":
+                assert len(expression.args) == 1, "Avg function requires one argument"
+                values = [
+                    apply_expression(expression.args[0], {**ctx, **row})
+                    for row in ctx["__grouped_rows"]
+                    if apply_expression(expression.args[0], {**ctx, **row}) is not None
+                    and isinstance(
+                        apply_expression(expression.args[0], {**ctx, **row}),
+                        (int, float),
+                    )
+                ]
+                if not values:
+                    return None
+                return sum(values) / len(values)
+            elif expression.name.lower() == "min":
+                assert len(expression.args) == 1, "Min function requires one argument"
+                values = [
+                    apply_expression(expression.args[0], {**ctx, **row})
+                    for row in ctx["__grouped_rows"]
+                    if apply_expression(expression.args[0], {**ctx, **row}) is not None
+                    and isinstance(
+                        apply_expression(expression.args[0], {**ctx, **row}),
+                        (int, float),
+                    )
+                ]
+                if not values:
+                    return None
+                return min(values)
+            elif expression.name.lower() == "max":
+                assert len(expression.args) == 1, "Max function requires one argument"
+                values = [
+                    apply_expression(expression.args[0], {**ctx, **row})
+                    for row in ctx["__grouped_rows"]
+                    if apply_expression(expression.args[0], {**ctx, **row}) is not None
+                    and isinstance(
+                        apply_expression(expression.args[0], {**ctx, **row}),
+                        (int, float),
+                    )
+                ]
+                if not values:
+                    return None
+                return max(values)
+            elif expression.name.lower() == "every":
+                assert len(expression.args) == 1, "Every function requires one argument"
+                return all(
+                    apply_expression(expression.args[0], {**ctx, **row})
+                    for row in ctx["__grouped_rows"]
+                    if apply_expression(expression.args[0], {**ctx, **row}) is not None
+                    and isinstance(
+                        apply_expression(expression.args[0], {**ctx, **row}), bool
+                    )
+                )
+            elif expression.name.lower() == "bool_or":
+                assert (
+                    len(expression.args) == 1
+                ), "Bool_or function requires one argument"
+                return any(
+                    apply_expression(expression.args[0], {**ctx, **row})
+                    for row in ctx["__grouped_rows"]
+                    if apply_expression(expression.args[0], {**ctx, **row}) is not None
+                    and isinstance(
+                        apply_expression(expression.args[0], {**ctx, **row}), bool
+                    )
+                )
+            elif expression.name.lower() == "bool_and":
+                assert (
+                    len(expression.args) == 1
+                ), "Bool_and function requires one argument"
+                return all(
+                    apply_expression(expression.args[0], {**ctx, **row})
+                    for row in ctx["__grouped_rows"]
+                    if apply_expression(expression.args[0], {**ctx, **row}) is not None
+                    and isinstance(
+                        apply_expression(expression.args[0], {**ctx, **row}), bool
+                    )
+                )
+            elif expression.name.lower() == "bit_or":
+                assert (
+                    len(expression.args) == 1
+                ), "Bit_or function requires one argument"
+                not_null_rows = [
+                    row
+                    for row in ctx["__grouped_rows"]
+                    if apply_expression(expression.args[0], {**ctx, **row}) is not None
+                    and apply_expression(expression.args[0], {**ctx, **row}) is not None
+                ]
+                if len(not_null_rows) == 0:
+                    return None
+                result_bits = apply_expression(
+                    expression.args[0], {**ctx, **not_null_rows[0]}
+                )
+                for row in not_null_rows[1:]:
+                    result_bits |= apply_expression(expression.args[0], {**ctx, **row})
+                return result_bits
+            elif expression.name.lower() == "bit_and":
+                assert (
+                    len(expression.args) == 1
+                ), "Bit_and function requires one argument"
+                not_null_rows = [
+                    row
+                    for row in ctx["__grouped_rows"]
+                    if apply_expression(expression.args[0], {**ctx, **row}) is not None
+                    and apply_expression(expression.args[0], {**ctx, **row}) is not None
+                ]
+                if len(not_null_rows) == 0:
+                    return None
+                result_bits = apply_expression(
+                    expression.args[0], {**ctx, **not_null_rows[0]}
+                )
+                for row in not_null_rows[1:]:
+                    result_bits &= apply_expression(expression.args[0], {**ctx, **row})
+                return result_bits
+            elif expression.name.lower() == "array_agg":
+                assert (
+                    len(expression.args) == 1
+                ), "Array_agg function requires one argument"
+                return [
+                    apply_expression(expression.args[0], {**ctx, **row})
+                    for row in ctx["__grouped_rows"]
+                ]
+            elif expression.name.lower() == "string_agg":
+                assert (
+                    len(expression.args) == 2
+                ), "String_agg function requires two arguments"
+                separator = expression.args[1].value
+                return separator.join(
+                    str(apply_expression(expression.args[0], {**ctx, **row}))
+                    for row in ctx["__grouped_rows"]
+                    if apply_expression(expression.args[0], {**ctx, **row}) is not None
+                    and apply_expression(expression.args[0], {**ctx, **row}) is not None
+                )
             else:
                 raise ValueError(f"Unknown aggregate function: {expression.name}")
         else:

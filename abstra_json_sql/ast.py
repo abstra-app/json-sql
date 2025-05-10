@@ -102,7 +102,7 @@ class NotEqualExpression(Expression):
 
 
 @dataclass
-class WildcardExpression(Expression):
+class Wildcard(Ast):
     pass
 
 
@@ -156,7 +156,7 @@ class Limit(Ast):
 
 @dataclass
 class Select(Command):
-    field_parts: List[Union[SelectField, WildcardExpression]]
+    field_parts: List[Union[SelectField, Wildcard]]
     from_part: Optional[From] = None
     where_part: Optional[Where] = None
     order_part: Optional[OrderBy] = None

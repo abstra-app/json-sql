@@ -6,7 +6,7 @@ from .ast import (
     SelectField,
     Limit,
     IntExpression,
-    WildcardExpression,
+    Wildcard,
     FunctionCallExpression,
     From,
     NameExpression,
@@ -75,6 +75,16 @@ def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
         elif next_token.type == "name":
             name_value = next_token.value
             if tokens and tokens[0].type == "paren_left":
+                if (
+                    next_token.value.lower() == "count"
+                    and tokens[1].type == "wildcard"
+                    and tokens[2].type == "paren_right"
+                ):
+                    tokens = tokens[3:]
+                    stack.append(
+                        FunctionCallExpression(name="count", args=[Wildcard()])
+                    )
+                    continue
                 tokens = tokens[1:]
                 args = []
                 while True:
@@ -184,7 +194,7 @@ def parse_fields(tokens: List[Token]) -> Tuple[List[SelectField], List[Token]]:
         if tokens[0].type == "keyword" and tokens[0].value.upper() == "FROM":
             break
         if tokens[0].type == "wildcard":
-            fields.append(WildcardExpression())
+            fields.append(Wildcard())
             tokens = tokens[1:]
         else:
             exp, tokens = parse_expression(tokens)

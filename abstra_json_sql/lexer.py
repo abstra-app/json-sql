@@ -32,7 +32,7 @@ def extract_space(code: str) -> str:
 
 
 def start_with_name(code: str):
-    return code[0].isalnum()
+    return code[0].isalnum() or code[0] == "_"
 
 
 def extract_name(code: str):
@@ -40,7 +40,7 @@ def extract_name(code: str):
         raise Exception(f"Not a valid name, code: {code}")
     result = ""
     for idx, char in enumerate(code):
-        if char.isalnum() or any(
+        if start_with_name(char) or any(
             k.startswith((result + char).upper()) for k in keywords
         ):
             result = result + char
