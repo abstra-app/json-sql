@@ -42,6 +42,45 @@ class FloatExpression(Expression):
 
 
 @dataclass
+class AndExpression(Expression):
+    left: Expression
+    right: Expression
+
+
+@dataclass
+class OrExpression(Expression):
+    left: Expression
+    right: Expression
+
+
+@dataclass
+class FalseExpression(Expression):
+    pass
+
+
+@dataclass
+class TrueExpression(Expression):
+    pass
+
+
+@dataclass
+class NotExpression(Expression):
+    expression: Expression
+
+
+@dataclass
+class IsExpression(Expression):
+    left: Expression
+    right: Expression
+    is_not: bool = False
+
+
+@dataclass
+class NullExpression(Expression):
+    pass
+
+
+@dataclass
 class PlusExpression(Expression):
     left: Expression
     right: Expression
@@ -127,6 +166,11 @@ class Where(Ast):
 
 
 @dataclass
+class Having(Ast):
+    expression: Expression
+
+
+@dataclass
 class SelectField(Ast):
     expression: Expression
     alias: Optional[str] = None
@@ -159,6 +203,7 @@ class Select(Command):
     field_parts: List[Union[SelectField, Wildcard]]
     from_part: Optional[From] = None
     where_part: Optional[Where] = None
-    order_part: Optional[OrderBy] = None
     group_part: Optional[GroupBy] = None
+    having_part: Optional[Where] = None
+    order_part: Optional[OrderBy] = None
     limit_part: Optional[Limit] = None

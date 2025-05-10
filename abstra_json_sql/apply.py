@@ -15,6 +15,14 @@ from .ast import (
     FunctionCallExpression,
     Command,
     PlusExpression,
+    NullExpression,
+    NotExpression,
+    AndExpression,
+    OrExpression,
+    IsExpression,
+    FalseExpression,
+    TrueExpression,
+    Wildcard,
     OrderBy,
     MinusExpression,
     MultiplyExpression,
@@ -28,6 +36,7 @@ from .ast import (
     Wildcard,
     Limit,
 )
+from dataclasses import dataclass
 
 
 def is_aggregate_function(name: str) -> bool:
@@ -344,6 +353,41 @@ def apply_expression(expression: Expression, ctx: dict):
                 return args[0].upper()
             else:
                 raise ValueError(f"Unknown function: {expression.name}")
+    elif isinstance(expression, NullExpression):
+        return None
+    elif isinstance(expression, IsExpression):
+        left_value = apply_expression(expression.left, ctx)
+        right_value = apply_expression(expression.right, ctx)
+        if expression.is_not:
+            return left_value is not right_value
+        else:
+            return left_value is right_value
+    elif isinstance(expression, NotExpression):
+        value = apply_expression(expression.expression, ctx)
+        if isinstance(value, bool):
+            return not value
+        else:
+            raise ValueError(f"Not expression should return bool, not {value}")
+    elif isinstance(expression, AndExpression):
+        left_value = apply_expression(expression.left, ctx)
+        right_value = apply_expression(expression.right, ctx)
+        if isinstance(left_value, bool) and isinstance(right_value, bool):
+            return left_value and right_value
+        else:
+            raise ValueError(
+                f"Unsupported types for AND: {type(left_value)}, {type(right_value)}"
+            )
+    elif isinstance(expression, OrExpression):
+        left_value = apply_expression(expression.left, ctx)
+        right_value = apply_expression(expression.right, ctx)
+        if isinstance(left_value, bool) and isinstance(right_value, bool):
+            return left_value or right_value
+        else:
+            raise ValueError(
+                f"Unsupported types for OR: {type(left_value)}, {type(right_value)}"
+            )
+    elif isinstance(expression, Wildcard):
+        raise ValueError("Wildcard cannot be used in expressions")
     else:
         raise ValueError(f"Unsupported expression type: {type(expression)}")
 
@@ -361,13 +405,62 @@ def apply_where(where: Where, data: List[dict], ctx: dict):
     return result
 
 
+def apply_having(having: Where, data: List[dict], ctx: dict):
+    result = []
+    for row in data:
+        value = apply_expression(having.expression, {**ctx, **row})
+        if value is True:
+            result.append(row)
+        elif value is False:
+            continue
+        else:
+            raise ValueError(f"Having expressions should return bool, not {value}")
+    return result
+
+
 def apply_order_by(order_by: OrderBy, data: List[dict], ctx: dict):
-    for order_field in order_by.fields:
-        data.sort(
-            key=lambda x: apply_expression(order_field.expression, {**ctx, **x}),
-            reverse=(order_field.direction == "DESC"),
-        )
-    return data
+    @dataclass
+    class Comparable:
+        value: list
+
+        def __lt__(self, other):
+            assert isinstance(other, Comparable), "other should be Comparable"
+            for i in range(len(self.value)):
+                if self.value[i] is None:
+                    return True
+                elif other.value[i] is None:
+                    return False
+                if self.value[i] < other.value[i]:
+                    return True
+                elif self.value[i] > other.value[i]:
+                    return False
+            return False
+
+        def __gt__(self, other):
+            assert isinstance(other, Comparable), "other should be Comparable"
+            for i in range(len(self.value)):
+                if self.value[i] is None:
+                    return False
+                elif other.value[i] is None:
+                    return True
+                if self.value[i] > other.value[i]:
+                    return True
+                elif self.value[i] < other.value[i]:
+                    return False
+            return False
+
+    sorted_data = sorted(
+        data,
+        key=lambda row: Comparable(
+            [
+                apply_expression(field.expression, {**ctx, **row})
+                for field in order_by.fields
+            ]
+        ),
+        reverse=any(field.direction == "DESC" for field in order_by.fields),
+    )
+
+    return sorted_data
 
 
 def apply_group_by(group_by: GroupBy, data: List[dict], ctx: dict):
@@ -379,7 +472,7 @@ def apply_group_by(group_by: GroupBy, data: List[dict], ctx: dict):
         if key not in groups:
             groups[key] = []
         groups[key].append(row)
-    if not groups:
+    if not group_by.fields:
         return [
             {
                 "__grouped_rows": data,
@@ -413,7 +506,7 @@ def apply_select_fields(fields: List[SelectField], data: List[dict], ctx: dict):
     return [
         {
             field_name(field) or field.expression: apply_expression(
-                field.expression, {**ctx, "__grouped_rows": data, **row}
+                field.expression, {**ctx, **row}
             )
             for field in fields
         }
@@ -460,6 +553,8 @@ def apply_select(select: Select, tables: ITablesSnapshot, ctx: dict):
         data = apply_group_by(select.group_part, data, ctx)
     elif has_implicit_aggregation(select.field_parts):
         data = apply_group_by(GroupBy(fields=[]), data, ctx)
+    if select.having_part:
+        data = apply_having(select.having_part, data, ctx)
     if select.order_part:
         data = apply_order_by(select.order_part, data, ctx)
     if select.limit_part:

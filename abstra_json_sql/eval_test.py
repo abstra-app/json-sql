@@ -333,3 +333,169 @@ class TestEvalSQL(TestCase):
         ctx = {}
         result = eval_sql(code=code, tables=tables, ctx=ctx)
         self.assertEqual(result, [{"string_agg": "a,b,c"}])
+
+    def test_limit(self):
+        code = "select foo from bar limit 1"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="bar",
+                    columns=[Column(name="foo", type="text")],
+                    data=[
+                        {"foo": "a"},
+                        {"foo": "b"},
+                        {"foo": None},
+                        {"foo": "c"},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(result, [{"foo": "a"}])
+
+    def test_limit_offset(self):
+        code = "select foo from bar limit 1 offset 1"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="bar",
+                    columns=[Column(name="foo", type="text")],
+                    data=[
+                        {"foo": "a"},
+                        {"foo": "b"},
+                        {"foo": None},
+                        {"foo": "c"},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(result, [{"foo": "b"}])
+
+    def test_order_by(self):
+        code = "select foo from bar order by foo"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="bar",
+                    columns=[Column(name="foo", type="text")],
+                    data=[
+                        {"foo": "c"},
+                        {"foo": "b"},
+                        {"foo": None},
+                        {"foo": "a"},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result, [{"foo": None}, {"foo": "a"}, {"foo": "b"}, {"foo": "c"}]
+        )
+
+    def test_order_by_desc(self):
+        code = "select foo from bar order by foo desc"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="bar",
+                    columns=[Column(name="foo", type="text")],
+                    data=[
+                        {"foo": "c"},
+                        {"foo": "b"},
+                        {"foo": None},
+                        {"foo": "a"},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result, [{"foo": "c"}, {"foo": "b"}, {"foo": "a"}, {"foo": None}]
+        )
+
+    def test_order_by_asc(self):
+        code = "select foo from bar order by foo asc"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="bar",
+                    columns=[Column(name="foo", type="text")],
+                    data=[
+                        {"foo": "c"},
+                        {"foo": "b"},
+                        {"foo": None},
+                        {"foo": "a"},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result, [{"foo": None}, {"foo": "a"}, {"foo": "b"}, {"foo": "c"}]
+        )
+
+    def test_group_by(self):
+        code = "select foo, count(*) from bar group by foo"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="bar",
+                    columns=[Column(name="foo", type="text")],
+                    data=[
+                        {"foo": "a"},
+                        {"foo": "b"},
+                        {"foo": None},
+                        {"foo": "a"},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result,
+            [
+                {"foo": "a", "count": 2},
+                {"foo": "b", "count": 1},
+                {"foo": None, "count": 1},
+            ],
+        )
+
+    def test_complete(self):
+        code = "\n".join(
+            [
+                "select foo, count(*)",
+                "from bar as baz",
+                "where foo is not null",
+                "group by foo",
+                "having foo <> 2",
+                "order by foo",
+                "limit 1 offset 1",
+            ]
+        )
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="bar",
+                    columns=[Column(name="foo", type="text")],
+                    data=[
+                        {"foo": 1},
+                        {"foo": 2},
+                        {"foo": 3},
+                        {"foo": 2},
+                        {"foo": None},
+                        {"foo": 3},
+                        {"foo": 1},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(result, [{"foo": 3, "count": 2}])

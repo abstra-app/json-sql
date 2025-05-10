@@ -1,6 +1,7 @@
 from unittest import TestCase
-from .parser import parse, parse_expression, parse_from, parse_limit
+from .parser import parse, parse_expression, parse_from, parse_limit, accept_keyword
 from .lexer import scan
+from .tokens import Token
 from .ast import (
     Select,
     From,
@@ -198,3 +199,20 @@ class LimitTest(TestCase):
             ),
         )
         self.assertEqual(tokens, [])
+
+
+class AcceptKeywordTest(TestCase):
+    def test_accept_keyword(self):
+        tokens = [
+            Token(type="keyword", value="having"),
+            Token(type="name", value="foo"),
+            Token(type="operator", value="<>"),
+            Token(type="int", value="2"),
+            Token(type="keyword", value="limit"),
+            Token(type="int", value="1"),
+            Token(type="keyword", value="offset"),
+            Token(type="int", value="1"),
+        ]
+        accepted_keywords = ["HAVING", "ORDER BY", "LIMIT"]
+        accepted_keywords = accept_keyword(tokens, accepted_keywords)
+        self.assertEqual(accepted_keywords, ["ORDER BY", "LIMIT"])

@@ -138,3 +138,36 @@ class TestTokens(TestCase):
     def test_name_expression_with_underscore(self):
         code = "foo_bar"
         self.assertEqual(scan(code), [Token("name", "foo_bar")])
+
+    def test_complete(self):
+        code = "select foo, count(*) from bar where foo is not null group by foo order by foo having foo <> 2 limit 1 offset 1"
+        self.assertEqual(
+            scan(code),
+            [
+                Token("keyword", "select"),
+                Token("name", "foo"),
+                Token("comma", ","),
+                Token("name", "count"),
+                Token("paren_left", "("),
+                Token("wildcard", "*"),
+                Token("paren_right", ")"),
+                Token("keyword", "from"),
+                Token("name", "bar"),
+                Token("keyword", "where"),
+                Token("name", "foo"),
+                Token("keyword", "is not"),
+                Token("keyword", "null"),
+                Token("keyword", "group by"),
+                Token("name", "foo"),
+                Token("keyword", "order by"),
+                Token("name", "foo"),
+                Token("keyword", "having"),
+                Token("name", "foo"),
+                Token("operator", "<>"),
+                Token("int", "2"),
+                Token("keyword", "limit"),
+                Token("int", "1"),
+                Token("keyword", "offset"),
+                Token("int", "1"),
+            ],
+        )

@@ -26,6 +26,8 @@ keywords = [
     "NOT",
     "IN",
     "LIKE",
+    "IS NOT",
+    "IS",
     "BETWEEN",
     "IS",
     "NULL",

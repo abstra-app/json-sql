@@ -1,5 +1,5 @@
 from .tokens import Token
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from .ast import (
     Ast,
     Select,
@@ -11,13 +11,22 @@ from .ast import (
     From,
     NameExpression,
     EqualExpression,
+    GroupBy,
     FloatExpression,
+    FalseExpression,
+    NullExpression,
+    IsExpression,
+    TrueExpression,
+    NotExpression,
     LessThanOrEqualExpression,
     NotEqualExpression,
     GreaterThanExpression,
     LessThanExpression,
+    AndExpression,
+    OrExpression,
     GreaterThanOrEqualExpression,
     Where,
+    Having,
     StringExpression,
     OrderBy,
     OrderField,
@@ -30,18 +39,22 @@ from .ast import (
 
 
 def parse_order(tokens: List[Token]) -> Tuple[OrderBy, List[Token]]:
-    if not tokens:
+    if (
+        not tokens
+        or tokens[0].type != "keyword"
+        or tokens[0].value.upper() != "ORDER BY"
+    ):
         return None, tokens
 
-    assert tokens[0].type == "keyword" and tokens[0].value.upper() == "ORDER BY", (
-        "Expected ORDER BY statement, got: " + str(tokens[0])
-    )
     tokens = tokens[1:]
-    if not tokens:
-        return None, tokens
+    assert tokens, "Expected ORDER BY fields"
 
     order_fields: List[OrderField] = []
-    while tokens and tokens[0].type != "comma":
+    while tokens:
+        if tokens[0].type == "keyword" and tokens[0].value.upper() == "LIMIT":
+            break
+        elif tokens[0].type == "keyword" and tokens[0].value.upper() == "HAVING":
+            break
         exp, tokens = parse_expression(tokens)
         if (
             tokens
@@ -104,47 +117,79 @@ def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
         elif next_token.type == "operator":
             operator = next_token.value
             if operator == "+":
-                right, tokens = parse_expression(tokens)
                 left = stack.pop()
+                right, tokens = parse_expression(tokens)
                 stack.append(PlusExpression(left=left, right=right))
             elif operator == "-":
-                right, tokens = parse_expression(tokens)
                 left = stack.pop()
+                right, tokens = parse_expression(tokens)
                 stack.append(MinusExpression(left=left, right=right))
             elif operator == "*":
-                right, tokens = parse_expression(tokens)
                 left = stack.pop()
+                right, tokens = parse_expression(tokens)
                 stack.append(MultiplyExpression(left=left, right=right))
             elif operator == "/":
-                right, tokens = parse_expression(tokens)
                 left = stack.pop()
+                right, tokens = parse_expression(tokens)
                 stack.append(DivideExpression(left=left, right=right))
             elif operator == "=":
-                right, tokens = parse_expression(tokens)
                 left = stack.pop()
+                right, tokens = parse_expression(tokens)
                 stack.append(EqualExpression(left=left, right=right))
             elif operator == "<":
-                right, tokens = parse_expression(tokens)
                 left = stack.pop()
+                right, tokens = parse_expression(tokens)
                 stack.append(LessThanExpression(left=left, right=right))
             elif operator == "<=":
-                right, tokens = parse_expression(tokens)
                 left = stack.pop()
+                right, tokens = parse_expression(tokens)
                 stack.append(LessThanOrEqualExpression(left=left, right=right))
             elif operator == ">":
-                right, tokens = parse_expression(tokens)
                 left = stack.pop()
+                right, tokens = parse_expression(tokens)
                 stack.append(GreaterThanExpression(left=left, right=right))
             elif operator == ">=":
-                right, tokens = parse_expression(tokens)
                 left = stack.pop()
+                right, tokens = parse_expression(tokens)
                 stack.append(GreaterThanOrEqualExpression(left=left, right=right))
             elif operator == "!=" or operator == "<>":
-                right, tokens = parse_expression(tokens)
                 left = stack.pop()
+                right, tokens = parse_expression(tokens)
                 stack.append(NotEqualExpression(left=left, right=right))
             else:
                 raise ValueError(f"Unknown operator: {operator}")
+        elif next_token.type == "keyword":
+            if next_token.value.upper() == "AND":
+                left = stack.pop()
+                right, tokens = parse_expression(tokens)
+                stack.append(AndExpression(left=left, right=right))
+            elif next_token.value.upper() == "OR":
+                left = stack.pop()
+                right, tokens = parse_expression(tokens)
+                stack.append(OrExpression(left=left, right=right))
+            elif next_token.value.upper() == "NOT":
+                tokens = tokens[1:]
+                expression, tokens = parse_expression(tokens)
+                stack.append(NotExpression(expression=expression))
+            elif next_token.value.upper() == "TRUE":
+                stack.append(TrueExpression())
+                tokens = tokens[1:]
+            elif next_token.value.upper() == "FALSE":
+                stack.append(FalseExpression())
+                tokens = tokens[1:]
+            elif next_token.value.upper() == "IS":
+                left = stack.pop()
+                right, tokens = parse_expression(tokens)
+                stack.append(IsExpression(left=left, right=right, is_not=False))
+            elif next_token.value.upper() == "IS NOT":
+                left = stack.pop()
+                right, tokens = parse_expression(tokens)
+                stack.append(IsExpression(left=left, right=right, is_not=True))
+            elif next_token.value.upper() == "NULL":
+                stack.append(NullExpression())
+            else:
+                tokens = [next_token] + tokens
+                break
         else:
             tokens = [next_token] + tokens
             break
@@ -154,7 +199,7 @@ def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
         raise ValueError("Invalid expression: " + str(stack))
 
 
-def parse_where(tokens: List[Token]) -> Tuple[Where, List[Token]]:
+def parse_where(tokens: List[Token]) -> Tuple[Optional[Where], List[Token]]:
     if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "WHERE":
         return None, tokens
     tokens = tokens[1:]
@@ -162,7 +207,39 @@ def parse_where(tokens: List[Token]) -> Tuple[Where, List[Token]]:
     return Where(expression=expression), tokens
 
 
-def parse_from(tokens: List[Token]) -> Tuple[From, List[Token]]:
+def parse_having(tokens: List[Token]) -> Tuple[Optional[Where], List[Token]]:
+    if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "HAVING":
+        return None, tokens
+    tokens = tokens[1:]
+    expression, tokens = parse_expression(tokens)
+    return Having(expression=expression), tokens
+
+
+def parse_group_by(tokens: List[Token]) -> Tuple[Optional[GroupBy], List[Token]]:
+    if (
+        not tokens
+        or tokens[0].type != "keyword"
+        or tokens[0].value.upper() != "GROUP BY"
+    ):
+        return None, tokens
+    tokens = tokens[1:]
+    group_fields: List[Expression] = []
+    while tokens:
+        if tokens[0].type == "keyword" and tokens[0].value.upper() == "ORDER BY":
+            break
+        elif tokens[0].type == "keyword" and tokens[0].value.upper() == "LIMIT":
+            break
+        elif tokens[0].type == "keyword" and tokens[0].value.upper() == "HAVING":
+            break
+        elif tokens[0].type == "comma":
+            tokens = tokens[1:]
+        else:
+            exp, tokens = parse_expression(tokens)
+            group_fields.append(exp)
+    return GroupBy(fields=group_fields), tokens
+
+
+def parse_from(tokens: List[Token]) -> Tuple[Optional[From], List[Token]]:
     if len(tokens) == 0:
         return None, tokens
     if tokens[0].type != "keyword" or tokens[0].value.upper() != "FROM":
@@ -189,12 +266,17 @@ def parse_from(tokens: List[Token]) -> Tuple[From, List[Token]]:
 
 
 def parse_fields(tokens: List[Token]) -> Tuple[List[SelectField], List[Token]]:
+    if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "SELECT":
+        raise ValueError("Expected SELECT statement")
+    tokens = tokens[1:]
     fields: List[SelectField] = []
-    while tokens and tokens[0].type != "comma":
+    while tokens:
         if tokens[0].type == "keyword" and tokens[0].value.upper() == "FROM":
             break
-        if tokens[0].type == "wildcard":
+        elif tokens[0].type == "wildcard":
             fields.append(Wildcard())
+            tokens = tokens[1:]
+        elif tokens[0].type == "comma":
             tokens = tokens[1:]
         else:
             exp, tokens = parse_expression(tokens)
@@ -238,22 +320,65 @@ def parse_limit(tokens: List[Token]) -> Tuple[Limit, List[Token]]:
         return Limit(limit=limit_int), tokens
 
 
+def accept_keyword(tokens: List[Token], accepted: List[str]):
+    if len(tokens) == 0:
+        return accepted
+
+    first_token = tokens[0]
+    for idx, accepted_keyword in enumerate(accepted):
+        if (
+            idx == 0
+            and first_token.type == "keyword"
+            and first_token.value.upper() == accepted_keyword.upper()
+        ):
+            return accepted[1:]
+        elif first_token.value.upper() == accepted_keyword.upper():
+            return accepted
+    raise ValueError(
+        f"Unexpected token {first_token} after {accepted}. Expected one of {accepted}"
+    )
+
+
 def parse_select(tokens: List[Token]) -> Tuple[Select, List[Token]]:
-    if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "SELECT":
-        raise ValueError("Expected SELECT statement")
-    tokens = tokens[1:]
+    accepted_keywords = [
+        "SELECT",
+        "FROM",
+        "WHERE",
+        "GROUP BY",
+        "HAVING",
+        "ORDER BY",
+        "LIMIT",
+    ]
+
+    accepted_keywords = accept_keyword(tokens, accepted_keywords)
     field_parts, tokens = parse_fields(tokens)
+
+    accepted_keywords = accept_keyword(tokens, accepted_keywords)
     from_part, tokens = parse_from(tokens)
+
+    accepted_keywords = accept_keyword(tokens, accepted_keywords)
     where_part, tokens = parse_where(tokens)
+
+    accepted_keywords = accept_keyword(tokens, accepted_keywords)
+    group_part, tokens = parse_group_by(tokens)
+
+    accepted_keywords = accept_keyword(tokens, accepted_keywords)
+    having_part, tokens = parse_having(tokens)
+
+    accepted_keywords = accept_keyword(tokens, accepted_keywords)
     order_part, tokens = parse_order(tokens)
+
+    accepted_keywords = accept_keyword(tokens, accepted_keywords)
     limit_part, tokens = parse_limit(tokens)
 
     return Select(
         field_parts=field_parts,
         from_part=from_part,
         where_part=where_part,
+        having_part=having_part,
         order_part=order_part,
         limit_part=limit_part,
+        group_part=group_part,
     ), tokens
 
 
