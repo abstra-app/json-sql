@@ -4,7 +4,7 @@ from .lexer import scan
 from .ast import (
     Select,
     From,
-    SelectWildcard,
+    WildcardExpression,
     PlusExpression,
     FunctionCallExpression,
     SelectField,
@@ -37,7 +37,7 @@ class ParserTest(TestCase):
         self.assertEqual(
             ast,
             Select(
-                field_parts=[SelectWildcard()],
+                field_parts=[WildcardExpression()],
                 from_part=From(
                     table="users",
                 ),

@@ -1,6 +1,6 @@
 from typing import List, Dict, Optional
 from .tables import ITablesSnapshot
-from .field_name import field_name
+from .field_name import field_name, expression_name
 from .ast import (
     Expression,
     StringExpression,
@@ -25,6 +25,7 @@ from .ast import (
     GreaterThanOrEqualExpression,
     LessThanExpression,
     LessThanOrEqualExpression,
+    WildcardExpression,
     Limit,
 )
 
@@ -157,14 +158,32 @@ def apply_expression(expression: Expression, ctx: dict):
             )
     elif isinstance(expression, FunctionCallExpression):
         if is_aggregate_function(expression.name):
-            raise NotImplementedError(
-                f"Function call expressions are not implemented: {expression.name}"
-            )
+            if expression.name.lower() == "count":
+                assert len(expression.args) == 1, "Count function requires one argument"
+                if isinstance(expression.args[0], WildcardExpression):
+                    return len(ctx["__grouped_rows"])
+                elif isinstance(expression.args[0], NameExpression):
+                    return len(
+                        [
+                            row
+                            for row in ctx["__grouped_rows"]
+                            if expression.args[0].name in row
+                            and row[expression.args[0].name] is not None
+                        ]
+                    )
+            else:
+                raise ValueError(f"Unknown aggregate function: {expression.name}")
         else:
             args = [apply_expression(arg, ctx) for arg in expression.args]
             if expression.name == "lower":
+                assert isinstance(
+                    args[0], str
+                ), "lower function requires a string argument"
                 return args[0].lower()
             elif expression.name == "upper":
+                assert isinstance(
+                    args[0], str
+                ), "upper function requires a string argument"
                 return args[0].upper()
             else:
                 raise ValueError(f"Unknown function: {expression.name}")
@@ -196,14 +215,27 @@ def apply_order_by(order_by: OrderBy, data: List[dict], ctx: dict):
 
 def apply_group_by(group_by: GroupBy, data: List[dict], ctx: dict):
     groups: Dict[tuple, list] = {}
-    for row in data:
+    for idx, row in enumerate(data):
         key = tuple(
             apply_expression(field, {**ctx, **row}) for field in group_by.fields
         )
         if key not in groups:
             groups[key] = []
         groups[key].append(row)
-    return groups
+    if not groups:
+        return [
+            {
+                "__grouped_rows": data,
+                **{expression_name(field): None for field in group_by.fields},
+            }
+        ]
+    return [
+        {
+            "__grouped_rows": rows,
+            **{expression_name(field): key for field, key in zip(group_by.fields, key)},
+        }
+        for key, rows in groups.items()
+    ]
 
 
 def apply_limit(limit: Limit, data: List[dict], ctx: dict):
@@ -212,11 +244,19 @@ def apply_limit(limit: Limit, data: List[dict], ctx: dict):
     return data[start:end]
 
 
+def has_aggregation_fields(fields: List[SelectField]) -> bool:
+    for field in fields:
+        if isinstance(field.expression, FunctionCallExpression):
+            if is_aggregate_function(field.expression.name):
+                return True
+    return False
+
+
 def apply_select_fields(fields: List[SelectField], data: List[dict], ctx: dict):
     return [
         {
             field_name(field) or field.expression: apply_expression(
-                field.expression, {**ctx, **row}
+                field.expression, {**ctx, "__grouped_rows": data, **row}
             )
             for field in fields
         }
@@ -247,12 +287,22 @@ def apply_from(
     return data
 
 
+def has_implicit_aggregation(fields: List[SelectField]) -> bool:
+    for field in fields:
+        if isinstance(field.expression, FunctionCallExpression):
+            if is_aggregate_function(field.expression.name):
+                return True
+    return False
+
+
 def apply_select(select: Select, tables: ITablesSnapshot, ctx: dict):
     data = apply_from(select.from_part, tables, ctx)
     if select.where_part:
         data = apply_where(select.where_part, data, ctx)
     if select.group_part:
         data = apply_group_by(select.group_part, data, ctx)
+    elif has_implicit_aggregation(select.field_parts):
+        data = apply_group_by(GroupBy(fields=[]), data, ctx)
     if select.order_part:
         data = apply_order_by(select.order_part, data, ctx)
     if select.limit_part:

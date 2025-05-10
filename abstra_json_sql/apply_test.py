@@ -202,17 +202,23 @@ class TestApplyGroupBy(TestCase):
 
         self.assertEqual(
             result,
-            {
-                ("foo",): [
-                    {"name": "Alice", "team": "foo"},
-                    {"name": "Charlie", "team": "foo"},
-                    {"name": "Eve", "team": "foo"},
-                ],
-                ("bar",): [
-                    {"name": "Bob", "team": "bar"},
-                    {"name": "David", "team": "bar"},
-                ],
-            },
+            [
+                {
+                    "team": "foo",
+                    "__grouped_rows": [
+                        {"name": "Alice", "team": "foo"},
+                        {"name": "Charlie", "team": "foo"},
+                        {"name": "Eve", "team": "foo"},
+                    ],
+                },
+                {
+                    "team": "bar",
+                    "__grouped_rows": [
+                        {"name": "Bob", "team": "bar"},
+                        {"name": "David", "team": "bar"},
+                    ],
+                },
+            ],
         )
 
 

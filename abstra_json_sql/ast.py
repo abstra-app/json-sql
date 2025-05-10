@@ -102,6 +102,11 @@ class NotEqualExpression(Expression):
 
 
 @dataclass
+class WildcardExpression(Expression):
+    pass
+
+
+@dataclass
 class Join(Ast):
     table: str
     table_alias: str
@@ -139,11 +144,6 @@ class OrderBy(Ast):
 
 
 @dataclass
-class SelectWildcard(Ast):
-    pass
-
-
-@dataclass
 class GroupBy(Ast):
     fields: List[Expression]
 
@@ -156,7 +156,7 @@ class Limit(Ast):
 
 @dataclass
 class Select(Command):
-    field_parts: List[Union[SelectField, SelectWildcard]]
+    field_parts: List[Union[SelectField, WildcardExpression]]
     from_part: Optional[From] = None
     where_part: Optional[Where] = None
     order_part: Optional[OrderBy] = None

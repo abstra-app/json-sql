@@ -6,7 +6,7 @@ from .ast import (
     SelectField,
     Limit,
     IntExpression,
-    SelectWildcard,
+    WildcardExpression,
     FunctionCallExpression,
     From,
     NameExpression,
@@ -184,7 +184,7 @@ def parse_fields(tokens: List[Token]) -> Tuple[List[SelectField], List[Token]]:
         if tokens[0].type == "keyword" and tokens[0].value.upper() == "FROM":
             break
         if tokens[0].type == "wildcard":
-            fields.append(SelectWildcard())
+            fields.append(WildcardExpression())
             tokens = tokens[1:]
         else:
             exp, tokens = parse_expression(tokens)

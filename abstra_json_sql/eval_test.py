@@ -73,3 +73,22 @@ class TestEvalSQL(TestCase):
                 {"upper": "CCC"},
             ],
         )
+
+    def test_count(self):
+        code = "select count(foo) from bar"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="bar",
+                    columns=[Column(name="foo", type="text")],
+                    data=[
+                        {"foo": "aaa"},
+                        {"foo": "bbb"},
+                        {"foo": "ccc"},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(result, [{"count": 3}])
