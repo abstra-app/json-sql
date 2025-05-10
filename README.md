@@ -12,6 +12,8 @@ pip install abstra-json-sql
 
 ## Usage
 
+### Command Line Interface
+
 Assuming you have a directory structure like this:
 
 ```
@@ -29,6 +31,47 @@ abstra-json-sql "select * from users"
 
 This will return all the users in the `users.json` file.
 
+### Python API
+
+You can also use `abstra-json-sql` in your Python code. Here's an example:
+
+```python
+from abstra_json_sql.eval import eval_sql
+from abstra_json_sql.tables import InMemoryTables, Table, Column
+
+code = "\n".join(
+    [
+        "select foo, count(*)",
+        "from bar as baz",
+        "where foo is not null",
+        "group by foo",
+        "having foo <> 2",
+        "order by foo",
+        "limit 1 offset 1",
+    ]
+)
+tables = InMemoryTables(
+    tables=[
+        Table(
+            name="bar",
+            columns=[Column(name="foo", type="text")],
+            data=[
+                {"foo": 1},
+                {"foo": 2},
+                {"foo": 3},
+                {"foo": 2},
+                {"foo": None},
+                {"foo": 3},
+                {"foo": 1},
+            ],
+        )
+    ],
+)
+ctx = {}
+result = eval_sql(code=code, tables=tables, ctx=ctx)
+
+print(result) # [{"foo": 3, "count": 2}]
+```
 ## Supported SQL Syntax
 
 - [ ] `WITH`
