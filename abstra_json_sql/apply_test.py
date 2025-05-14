@@ -86,6 +86,18 @@ class TestApplyExpression(TestCase):
         result = apply_expression(expression, ctx)
         self.assertEqual(result, True)
 
+    def test_parentheses(self):
+        expression = PlusExpression(
+            left=MultiplyExpression(
+                left=NameExpression(name="a"),
+                right=NameExpression(name="b"),
+            ),
+            right=NameExpression(name="c"),
+        )
+        ctx = {"a": 2, "b": 3, "c": 4}
+        result = apply_expression(expression, ctx)
+        self.assertEqual(result, 10)
+
 
 class TestApplyWhere(TestCase):
     def test_where_no_context(self):
