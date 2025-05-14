@@ -22,6 +22,7 @@ keywords = [
     "WHERE",
     "AND",
     "AS",
+    "ON",
     "OR",
     "NOT",
     "IN",
@@ -40,6 +41,8 @@ keywords = [
     "ASC",
     "DESC",
     "INNER JOIN",
+    "RIGHT OUTER JOIN",
+    "LEFT OUTER JOIN",
     "LEFT JOIN",
     "RIGHT JOIN",
     "FULL JOIN",
@@ -47,6 +50,9 @@ keywords = [
     "NATURAL JOIN",
     "JOIN",
     "LIMIT",
+    "TRUE",
+    "FALSE",
+    "NULL"
 ]
 
 

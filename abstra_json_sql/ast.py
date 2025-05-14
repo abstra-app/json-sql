@@ -149,7 +149,7 @@ class Wildcard(Ast):
 class Join(Ast):
     table: str
     table_alias: str
-    join_type: Literal["INNER", "LEFT", "RIGHT"]
+    join_type: Literal["INNER", "LEFT", "RIGHT", "FULL", "CROSS", "NATURAL"]
     on: Expression
 
 

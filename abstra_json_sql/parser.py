@@ -32,6 +32,7 @@ from .ast import (
     OrderField,
     PlusExpression,
     MinusExpression,
+    Join,
     MultiplyExpression,
     DivideExpression,
     Expression,
@@ -79,6 +80,39 @@ def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
     while tokens:
         next_token = tokens[0]
         tokens = tokens[1:]
+
+        if next_token.type == "keyword":
+            if next_token.value.upper() == "AND":
+                left = stack.pop()
+                right, tokens = parse_expression(tokens)
+                stack.append(AndExpression(left=left, right=right))
+            elif next_token.value.upper() == "OR":
+                left = stack.pop()
+                right, tokens = parse_expression(tokens)
+                stack.append(OrExpression(left=left, right=right))
+            elif next_token.value.upper() == "NOT":
+                tokens = tokens[1:]
+                expression, tokens = parse_expression(tokens)
+                stack.append(NotExpression(expression=expression))
+            elif next_token.value.upper() == "TRUE":
+                stack.append(TrueExpression())
+                tokens = tokens[1:]
+            elif next_token.value.upper() == "FALSE":
+                stack.append(FalseExpression())
+                tokens = tokens[1:]
+            elif next_token.value.upper() == "IS":
+                left = stack.pop()
+                right, tokens = parse_expression(tokens)
+                stack.append(IsExpression(left=left, right=right, is_not=False))
+            elif next_token.value.upper() == "IS NOT":
+                left = stack.pop()
+                right, tokens = parse_expression(tokens)
+                stack.append(IsExpression(left=left, right=right, is_not=True))
+            elif next_token.value.upper() == "NULL":
+                stack.append(NullExpression())
+            else:
+                tokens = [next_token] + tokens
+                break
         if next_token.type == "int":
             stack.append(IntExpression(value=int(next_token.value)))
         elif next_token.type == "float":
@@ -158,38 +192,6 @@ def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
                 stack.append(NotEqualExpression(left=left, right=right))
             else:
                 raise ValueError(f"Unknown operator: {operator}")
-        elif next_token.type == "keyword":
-            if next_token.value.upper() == "AND":
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(AndExpression(left=left, right=right))
-            elif next_token.value.upper() == "OR":
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(OrExpression(left=left, right=right))
-            elif next_token.value.upper() == "NOT":
-                tokens = tokens[1:]
-                expression, tokens = parse_expression(tokens)
-                stack.append(NotExpression(expression=expression))
-            elif next_token.value.upper() == "TRUE":
-                stack.append(TrueExpression())
-                tokens = tokens[1:]
-            elif next_token.value.upper() == "FALSE":
-                stack.append(FalseExpression())
-                tokens = tokens[1:]
-            elif next_token.value.upper() == "IS":
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(IsExpression(left=left, right=right, is_not=False))
-            elif next_token.value.upper() == "IS NOT":
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(IsExpression(left=left, right=right, is_not=True))
-            elif next_token.value.upper() == "NULL":
-                stack.append(NullExpression())
-            else:
-                tokens = [next_token] + tokens
-                break
         else:
             tokens = [next_token] + tokens
             break
@@ -238,6 +240,68 @@ def parse_group_by(tokens: List[Token]) -> Tuple[Optional[GroupBy], List[Token]]
             group_fields.append(exp)
     return GroupBy(fields=group_fields), tokens
 
+def parse_join(tokens: List[Token]) -> Tuple[Optional[Join], List[Token]]:
+    if len(tokens) == 0:
+        return None, tokens
+    
+    # JOIN
+    if tokens[0].type == "keyword" and tokens[0].value.upper() in ["INNER JOIN", "JOIN"]:
+        join_type = "INNER"
+        tokens = tokens[1:]
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() in ["LEFT JOIN", "LEFT OUTER JOIN"]:
+        join_type = "LEFT"
+        tokens = tokens[1:]
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() in ["RIGHT JOIN", "RIGHT OUTER JOIN"]:
+        join_type = "RIGHT"
+        tokens = tokens[1:]
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() in ["FULL JOIN", "FULL OUTER JOIN"]:
+        join_type = "FULL"
+        tokens = tokens[1:]
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() in ["CROSS JOIN"]:
+        join_type = "CROSS"
+        tokens = tokens[1:]
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() in ["NATURAL JOIN"]:
+        join_type = "NATURAL"
+        tokens = tokens[1:]
+    else:
+        return None, tokens
+    
+    # Table
+    table = tokens[0]
+    assert table.type == "name", f"Expected table name, got {table}"
+    tokens = tokens[1:]
+        
+    # AS
+    if (
+        len(tokens) > 0
+        and tokens[0].type == "keyword"
+        and tokens[0].value.upper() == "AS"
+    ):
+        tokens = tokens[1:]
+        alias_token = tokens[0]
+        assert alias_token.type == "name", f"Expected alias name, got {alias_token}"
+        tokens = tokens[1:]
+    else:
+        alias_token = None
+    
+    # ON
+    if (
+        len(tokens) > 0
+        and tokens[0].type == "keyword"
+        and tokens[0].value.upper() == "ON"
+    ):
+        tokens = tokens[1:]
+        on_expression, tokens = parse_expression(tokens)
+    else:
+        raise ValueError("Expected ON clause after JOIN")
+
+    return Join(
+        table=table.value,
+        table_alias=alias_token.value if alias_token else None,
+        join_type=join_type,
+        on=on_expression,
+    ), tokens
+
 
 def parse_from(tokens: List[Token]) -> Tuple[Optional[From], List[Token]]:
     if len(tokens) == 0:
@@ -261,8 +325,20 @@ def parse_from(tokens: List[Token]) -> Tuple[Optional[From], List[Token]]:
         assert alias_token.type == "name", f"Expected alias name, got {alias_token}"
         tokens = tokens[1:]
         return From(table=table.value, alias=alias_token.value), tokens
-    else:
+
+    join: List[Join] = []
+    while True:
+        if len(tokens) == 0:
+            break
+        j, tokens = parse_join(tokens)
+        if j is None:
+            break
+        join.append(j)
+    
+    if len(join) == 0:
         return From(table=table.value), tokens
+    else:
+        return From(table=table.value, join=join), tokens
 
 
 def parse_fields(tokens: List[Token]) -> Tuple[List[SelectField], List[Token]]:
