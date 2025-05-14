@@ -85,6 +85,12 @@ print(result) # [{"foo": 3, "count": 2}]
     - [ ] `DISTINCT`
     - [ ] `*`
     - [x] `FROM`
+        - [x] `JOIN`
+            - [x] `INNER JOIN`
+            - [x] `LEFT JOIN`
+            - [x] `RIGHT JOIN`
+            - [x] `FULL JOIN`
+            - [ ] `CROSS JOIN`
     - [x] `WHERE`
     - [x] `GROUP BY`
     - [x] `HAVING`
