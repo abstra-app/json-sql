@@ -508,6 +508,7 @@ class TestEvalSQL(TestCase):
                     data=[
                         {"id": 1, "foo": "a1"},
                         {"id": 2, "foo": "a2"},
+                        {"id": 3, "foo": "a3"},
                     ],
                 ),
                 Table(
@@ -519,6 +520,7 @@ class TestEvalSQL(TestCase):
                     data=[
                         {"a_id": 1, "bar": "b1"},
                         {"a_id": 2, "bar": "b2"},
+                        {"a_id": 2, "bar": "b3"},
                     ],
                 ),
             ],
@@ -530,6 +532,49 @@ class TestEvalSQL(TestCase):
             [
                 {"foo": "a1", "bar": "b1"},
                 {"foo": "a2", "bar": "b2"},
+                {"foo": "a2", "bar": "b3"},
+            ],
+        )
+
+    def test_left_outer_join(self):
+        code = "select a.foo, b.bar from a left outer join b on a.id = b.a_id"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="a",
+                    columns=[
+                        Column(name="id", type="int"),
+                        Column(name="foo", type="text"),
+                    ],
+                    data=[
+                        {"id": 1, "foo": "a1"},
+                        {"id": 2, "foo": "a2"},
+                        {"id": 3, "foo": "a3"},
+                    ],
+                ),
+                Table(
+                    name="b",
+                    columns=[
+                        Column(name="a_id", type="int"),
+                        Column(name="bar", type="text"),
+                    ],
+                    data=[
+                        {"a_id": 1, "bar": "b1"},
+                        {"a_id": 2, "bar": "b2"},
+                        {"a_id": 2, "bar": "b3"},
+                    ],
+                ),
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result,
+            [
+                {"foo": "a1", "bar": "b1"},
+                {"foo": "a2", "bar": "b2"},
+                {"foo": "a2", "bar": "b3"},
+                {"foo": "a3", "bar": None},
             ],
         )
 

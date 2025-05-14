@@ -539,7 +539,6 @@ def apply_from(
     table = tables.get_table(from_part.table)
     if not table:
         raise ValueError(f"Table {from_part.table} not found")
-    data = table.data
     if from_part.join:
         for join in from_part.join:
             join_table = tables.get_table(join.table)
@@ -550,7 +549,7 @@ def apply_from(
                     **add_scope_to_keys(table.name, row),
                     **add_scope_to_keys(join_table.name, join_row),
                 }
-                for row in data
+                for row in table.data
                 for join_row in join_table.data
                 if apply_expression(
                     join.on,
@@ -561,8 +560,31 @@ def apply_from(
                     },
                 )
             ]
+
+            if join.join_type == "LEFT":
+                data += [
+                    {
+                        **add_scope_to_keys(table.name, row),
+                        **add_scope_to_keys(
+                            join_table.name,
+                            {join_col.name: None for join_col in join_table.columns},
+                        ),
+                    }
+                    for row in table.data
+                    if not any(
+                        apply_expression(
+                            join.on,
+                            {
+                                **ctx,
+                                **add_scope_to_keys(table.name, row),
+                                **add_scope_to_keys(join_table.name, join_row),
+                            },
+                        )
+                        for join_row in join_table.data
+                    )
+                ]
     else:
-        data = [{**add_scope_to_keys(table.name, row)} for row in data]
+        data = [{**add_scope_to_keys(table.name, row)} for row in table.data]
     return data
 
 
