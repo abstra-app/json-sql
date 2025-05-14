@@ -467,6 +467,72 @@ class TestEvalSQL(TestCase):
             ],
         )
 
+    def test_select_wildcard(self):
+        code = "select * from bar"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="bar",
+                    columns=[Column(name="foo", type="text")],
+                    data=[
+                        {"foo": "a"},
+                        {"foo": "b"},
+                        {"foo": None},
+                        {"foo": "c"},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result,
+            [
+                {"foo": "a"},
+                {"foo": "b"},
+                {"foo": None},
+                {"foo": "c"},
+            ],
+        )
+
+    def test_join(self):
+        code = "select a.foo, b.bar from a join b on a.id = b.a_id"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="a",
+                    columns=[
+                        Column(name="id", type="int"),
+                        Column(name="foo", type="text"),
+                    ],
+                    data=[
+                        {"id": 1, "foo": "a1"},
+                        {"id": 2, "foo": "a2"},
+                    ],
+                ),
+                Table(
+                    name="b",
+                    columns=[
+                        Column(name="a_id", type="int"),
+                        Column(name="bar", type="text"),
+                    ],
+                    data=[
+                        {"a_id": 1, "bar": "b1"},
+                        {"a_id": 2, "bar": "b2"},
+                    ],
+                ),
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result,
+            [
+                {"foo": "a1", "bar": "b1"},
+                {"foo": "a2", "bar": "b2"},
+            ],
+        )
+
     def test_complete(self):
         code = "\n".join(
             [
@@ -499,31 +565,3 @@ class TestEvalSQL(TestCase):
         ctx = {}
         result = eval_sql(code=code, tables=tables, ctx=ctx)
         self.assertEqual(result, [{"foo": 3, "count": 2}])
-
-    def test_select_wildcard(self):
-        code = "select * from bar"
-        tables = InMemoryTables(
-            tables=[
-                Table(
-                    name="bar",
-                    columns=[Column(name="foo", type="text")],
-                    data=[
-                        {"foo": "a"},
-                        {"foo": "b"},
-                        {"foo": None},
-                        {"foo": "c"},
-                    ],
-                )
-            ],
-        )
-        ctx = {}
-        result = eval_sql(code=code, tables=tables, ctx=ctx)
-        self.assertEqual(
-            result,
-            [
-                {"foo": "a"},
-                {"foo": "b"},
-                {"foo": None},
-                {"foo": "c"},
-            ],
-        )

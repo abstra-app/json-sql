@@ -511,7 +511,11 @@ def apply_select_fields(fields: List[SelectField], data: List[dict], ctx: dict):
         result_row = {}
         for field in fields:
             if isinstance(field.expression, Wildcard):
-                result_row.update(row)
+                for key, value in row.items():
+                    assert isinstance(key, str), "Key should be a string"
+                    parts = key.split(".")
+                    last_part = parts[-1]
+                    result_row[last_part] = value
             elif isinstance(field.expression, Expression):
                 result_row[field_name(field)] = apply_expression(
                     field.expression, {**ctx, **row}
@@ -520,6 +524,11 @@ def apply_select_fields(fields: List[SelectField], data: List[dict], ctx: dict):
                 raise ValueError(f"Unsupported field type: {type(field)}")
         result.append(result_row)
     return result
+
+
+def add_scope_to_keys(prefix: str, data: dict) -> dict:
+    change = {f"{prefix}.{key}": value for key, value in data.items()}
+    return {**data, **change}
 
 
 def apply_from(
@@ -537,11 +546,23 @@ def apply_from(
             if not join_table:
                 raise ValueError(f"Table {join.table} not found")
             data = [
-                {**row, **join_row}
+                {
+                    **add_scope_to_keys(table.name, row),
+                    **add_scope_to_keys(join_table.name, join_row),
+                }
                 for row in data
                 for join_row in join_table.data
-                if apply_expression(join.on, {**ctx, **row, **join_row})
+                if apply_expression(
+                    join.on,
+                    {
+                        **ctx,
+                        **add_scope_to_keys(table.name, row),
+                        **add_scope_to_keys(join_table.name, join_row),
+                    },
+                )
             ]
+    else:
+        data = [{**add_scope_to_keys(table.name, row)} for row in data]
     return data
 
 

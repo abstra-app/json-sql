@@ -32,7 +32,7 @@ def extract_space(code: str) -> str:
 
 
 def start_with_name(code: str):
-    return code[0].isalnum() or code[0] == "_"
+    return code[0].isalnum() or code[0] == "_" or code[0] == "."
 
 
 def extract_name(code: str):

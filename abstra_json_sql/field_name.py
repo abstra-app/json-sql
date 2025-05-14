@@ -16,7 +16,9 @@ def expression_name(expression: Expression):
     Get the field name from an Expression object.
     """
     if isinstance(expression, NameExpression):
-        return expression.name
+        name_parts = expression.name.split(".")
+        last_part = name_parts[-1]
+        return last_part
     elif isinstance(expression, FunctionCallExpression):
         return expression.name
     else:
