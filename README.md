@@ -83,7 +83,7 @@ print(result) # [{"foo": 3, "count": 2}]
 - [ ] `SELECT`
     - [ ] `ALL`
     - [ ] `DISTINCT`
-    - [ ] `*`
+    - [x] `*`
     - [x] `FROM`
         - [x] `JOIN`
             - [x] `INNER JOIN`
