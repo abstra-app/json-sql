@@ -578,6 +578,93 @@ class TestEvalSQL(TestCase):
             ],
         )
 
+    def test_right_join(self):
+        code = "select a.foo, b.bar from a right outer join b on a.id = b.a_id"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="a",
+                    columns=[
+                        Column(name="id", type="int"),
+                        Column(name="foo", type="text"),
+                    ],
+                    data=[
+                        {"id": 1, "foo": "a1"},
+                        {"id": 2, "foo": "a2"},
+                        {"id": 3, "foo": "a3"},
+                    ],
+                ),
+                Table(
+                    name="b",
+                    columns=[
+                        Column(name="a_id", type="int"),
+                        Column(name="bar", type="text"),
+                    ],
+                    data=[
+                        {"a_id": 1, "bar": "b1"},
+                        {"a_id": 2, "bar": "b2"},
+                        {"a_id": 2, "bar": "b3"},
+                        {"a_id": 4, "bar": "b4"},
+                    ],
+                ),
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result,
+            [
+                {"foo": "a1", "bar": "b1"},
+                {"foo": "a2", "bar": "b2"},
+                {"foo": "a2", "bar": "b3"},
+                {"foo": None, "bar": "b4"},
+            ],
+        )
+
+    def test_full_join(self):
+        code = "select a.foo, b.bar from a full outer join b on a.id = b.a_id"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="a",
+                    columns=[
+                        Column(name="id", type="int"),
+                        Column(name="foo", type="text"),
+                    ],
+                    data=[
+                        {"id": 1, "foo": "a1"},
+                        {"id": 2, "foo": "a2"},
+                        {"id": 3, "foo": "a3"},
+                    ],
+                ),
+                Table(
+                    name="b",
+                    columns=[
+                        Column(name="a_id", type="int"),
+                        Column(name="bar", type="text"),
+                    ],
+                    data=[
+                        {"a_id": 1, "bar": "b1"},
+                        {"a_id": 2, "bar": "b2"},
+                        {"a_id": 2, "bar": "b3"},
+                        {"a_id": 4, "bar": "b4"},
+                    ],
+                ),
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result,
+            [
+                {"foo": "a1", "bar": "b1"},
+                {"foo": "a2", "bar": "b2"},
+                {"foo": "a2", "bar": "b3"},
+                {"foo": "a3", "bar": None},
+                {"foo": None, "bar": "b4"},
+            ],
+        )
+
     def test_complete(self):
         code = "\n".join(
             [

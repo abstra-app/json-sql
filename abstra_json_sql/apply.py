@@ -561,8 +561,8 @@ def apply_from(
                 )
             ]
 
-            if join.join_type == "LEFT":
-                data += [
+            if join.join_type == "LEFT" or join.join_type == "FULL":
+                left_data = [
                     {
                         **add_scope_to_keys(table.name, row),
                         **add_scope_to_keys(
@@ -583,6 +583,30 @@ def apply_from(
                         for join_row in join_table.data
                     )
                 ]
+                data.extend(left_data)
+            if join.join_type == "RIGHT" or join.join_type == "FULL":
+                right_data = [
+                    {
+                        **add_scope_to_keys(join_table.name, join_row),
+                        **add_scope_to_keys(
+                            table.name,
+                            {table_col.name: None for table_col in table.columns},
+                        ),
+                    }
+                    for join_row in join_table.data
+                    if not any(
+                        apply_expression(
+                            join.on,
+                            {
+                                **ctx,
+                                **add_scope_to_keys(table.name, row),
+                                **add_scope_to_keys(join_table.name, join_row),
+                            },
+                        )
+                        for row in table.data
+                    )
+                ]
+                data.extend(right_data)
     else:
         data = [{**add_scope_to_keys(table.name, row)} for row in table.data]
     return data

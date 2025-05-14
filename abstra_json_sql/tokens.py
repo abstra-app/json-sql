@@ -46,6 +46,7 @@ keywords = [
     "LEFT JOIN",
     "RIGHT JOIN",
     "FULL JOIN",
+    "FULL OUTER JOIN",
     "CROSS JOIN",
     "NATURAL JOIN",
     "JOIN",
