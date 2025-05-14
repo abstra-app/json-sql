@@ -40,18 +40,24 @@ def extract_name(code: str):
         raise Exception(f"Not a valid name, code: {code}")
     result = ""
     for idx, char in enumerate(code):
-        if start_with_name(char) or any(
-            k.startswith((result + char).upper()) for k in keywords
-        ):
+        if start_with_name(char):
             result = result + char
-        elif result.upper() in keywords:
-            return Token("keyword", result), code[idx:]
         else:
             return Token("name", result), code[idx:]
-    if code.upper() in keywords:
-        return Token("keyword", code), ""
-    else:
-        return Token("name", code), ""
+    return Token("name", code), ""
+
+
+def start_with_keyword(code: str):
+    for keyword in keywords:
+        if code.upper().startswith(keyword.upper()):
+            return True
+    return False
+
+
+def extract_keyword(code: str):
+    for keyword in keywords:
+        if code.upper().startswith(keyword.upper()):
+            return Token("keyword", code[: len(keyword)]), code[len(keyword) :]
 
 
 def start_with_quoted_name(code: str):
@@ -130,6 +136,9 @@ def scan(code: str) -> List[Token]:
             result.append(token)
         elif start_with_number(code):
             token, code = extract_number(code)
+            result.append(token)
+        elif start_with_keyword(code):
+            token, code = extract_keyword(code)
             result.append(token)
         elif start_with_name(code):
             token, code = extract_name(code)

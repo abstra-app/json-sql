@@ -96,10 +96,8 @@ def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
                 stack.append(NotExpression(expression=expression))
             elif next_token.value.upper() == "TRUE":
                 stack.append(TrueExpression())
-                tokens = tokens[1:]
             elif next_token.value.upper() == "FALSE":
                 stack.append(FalseExpression())
-                tokens = tokens[1:]
             elif next_token.value.upper() == "IS":
                 left = stack.pop()
                 right, tokens = parse_expression(tokens)
@@ -112,7 +110,7 @@ def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
                 stack.append(NullExpression())
             else:
                 tokens = [next_token] + tokens
-                break
+            break
         if next_token.type == "int":
             stack.append(IntExpression(value=int(next_token.value)))
         elif next_token.type == "float":
@@ -240,21 +238,34 @@ def parse_group_by(tokens: List[Token]) -> Tuple[Optional[GroupBy], List[Token]]
             group_fields.append(exp)
     return GroupBy(fields=group_fields), tokens
 
+
 def parse_join(tokens: List[Token]) -> Tuple[Optional[Join], List[Token]]:
     if len(tokens) == 0:
         return None, tokens
-    
+
     # JOIN
-    if tokens[0].type == "keyword" and tokens[0].value.upper() in ["INNER JOIN", "JOIN"]:
+    if tokens[0].type == "keyword" and tokens[0].value.upper() in [
+        "INNER JOIN",
+        "JOIN",
+    ]:
         join_type = "INNER"
         tokens = tokens[1:]
-    elif tokens[0].type == "keyword" and tokens[0].value.upper() in ["LEFT JOIN", "LEFT OUTER JOIN"]:
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() in [
+        "LEFT JOIN",
+        "LEFT OUTER JOIN",
+    ]:
         join_type = "LEFT"
         tokens = tokens[1:]
-    elif tokens[0].type == "keyword" and tokens[0].value.upper() in ["RIGHT JOIN", "RIGHT OUTER JOIN"]:
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() in [
+        "RIGHT JOIN",
+        "RIGHT OUTER JOIN",
+    ]:
         join_type = "RIGHT"
         tokens = tokens[1:]
-    elif tokens[0].type == "keyword" and tokens[0].value.upper() in ["FULL JOIN", "FULL OUTER JOIN"]:
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() in [
+        "FULL JOIN",
+        "FULL OUTER JOIN",
+    ]:
         join_type = "FULL"
         tokens = tokens[1:]
     elif tokens[0].type == "keyword" and tokens[0].value.upper() in ["CROSS JOIN"]:
@@ -265,12 +276,12 @@ def parse_join(tokens: List[Token]) -> Tuple[Optional[Join], List[Token]]:
         tokens = tokens[1:]
     else:
         return None, tokens
-    
+
     # Table
     table = tokens[0]
     assert table.type == "name", f"Expected table name, got {table}"
     tokens = tokens[1:]
-        
+
     # AS
     if (
         len(tokens) > 0
@@ -283,7 +294,7 @@ def parse_join(tokens: List[Token]) -> Tuple[Optional[Join], List[Token]]:
         tokens = tokens[1:]
     else:
         alias_token = None
-    
+
     # ON
     if (
         len(tokens) > 0
@@ -334,7 +345,7 @@ def parse_from(tokens: List[Token]) -> Tuple[Optional[From], List[Token]]:
         if j is None:
             break
         join.append(j)
-    
+
     if len(join) == 0:
         return From(table=table.value), tokens
     else:

@@ -23,7 +23,6 @@ keywords = [
     "AND",
     "AS",
     "ON",
-    "OR",
     "NOT",
     "IN",
     "LIKE",
@@ -40,6 +39,7 @@ keywords = [
     "HAVING",
     "ASC",
     "DESC",
+    "OR",
     "INNER JOIN",
     "RIGHT OUTER JOIN",
     "LEFT OUTER JOIN",
@@ -52,8 +52,8 @@ keywords = [
     "LIMIT",
     "TRUE",
     "FALSE",
-    "NULL"
 ]
+keywords.sort(reverse=True)
 
 
 @dataclass

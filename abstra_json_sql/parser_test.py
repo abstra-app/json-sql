@@ -11,7 +11,9 @@ from .ast import (
     SelectField,
     IntExpression,
     NameExpression,
+    IsExpression,
     EqualExpression,
+    NullExpression,
     StringExpression,
     Where,
     OrderBy,
@@ -196,6 +198,33 @@ class LimitTest(TestCase):
             Limit(
                 limit=10,
                 offset=5,
+            ),
+        )
+        self.assertEqual(tokens, [])
+
+
+class IsTest(TestCase):
+    def test_is_expression(self):
+        tokens = scan("name IS NULL")
+        ast, tokens = parse_expression(tokens)
+        self.assertEqual(
+            ast,
+            IsExpression(
+                left=NameExpression(name="name"),
+                right=NullExpression(),
+            ),
+        )
+        self.assertEqual(tokens, [])
+
+    def test_is_not_expression(self):
+        tokens = scan("name IS NOT NULL")
+        ast, tokens = parse_expression(tokens)
+        self.assertEqual(
+            ast,
+            IsExpression(
+                left=NameExpression(name="name"),
+                right=NullExpression(),
+                is_not=True,
             ),
         )
         self.assertEqual(tokens, [])

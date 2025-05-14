@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional
 from .tables import ITablesSnapshot
 from .field_name import field_name, expression_name
 from .ast import (
