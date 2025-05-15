@@ -1,5 +1,5 @@
 from .tokens import Token
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Union
 from .ast import (
     Ast,
     Select,
@@ -8,6 +8,8 @@ from .ast import (
     IntExpression,
     Wildcard,
     FunctionCallExpression,
+    With,
+    WithPart,
     From,
     NameExpression,
     EqualExpression,
@@ -77,51 +79,90 @@ def parse_order(tokens: List[Token]) -> Tuple[OrderBy, List[Token]]:
 
 def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
     stack = []
-    while tokens:
-        next_token = tokens[0]
-        tokens = tokens[1:]
 
-        if next_token.type == "keyword":
-            if next_token.value.upper() == "AND":
+    it = 0
+    while tokens:
+        it = it + 1
+        print(it)
+        if it > 1000:
+            raise ValueError("Infinite loop detected in parse_expression")
+        if tokens[0].type == "paren_left":
+            tokens = tokens[1:]
+
+            if tokens[0].value.upper() in [
+                "SELECT",
+                "WITH",
+                "INSERT",
+                "UPDATE",
+                "DELETE",
+            ]:
+                subquery, tokens = parse_command(tokens)
+                stack.append(subquery)
+            else:
+                expression, tokens = parse_expression(tokens)
+                stack.append(expression)
+            if tokens and tokens[0].type == "paren_right":
+                tokens = tokens[1:]
+                break
+            else:
+                raise ValueError("Expected closing parenthesis")
+        elif tokens[0].type == "paren_right":
+            break
+        elif tokens[0].type == "keyword":
+            if tokens[0].value.upper() == "AND":
+                tokens = tokens[1:]
                 left = stack.pop()
                 right, tokens = parse_expression(tokens)
                 stack.append(AndExpression(left=left, right=right))
-            elif next_token.value.upper() == "OR":
+            elif tokens[0].value.upper() == "OR":
+                tokens = tokens[1:]
                 left = stack.pop()
                 right, tokens = parse_expression(tokens)
                 stack.append(OrExpression(left=left, right=right))
-            elif next_token.value.upper() == "NOT":
+            elif tokens[0].value.upper() == "NOT":
                 tokens = tokens[1:]
                 expression, tokens = parse_expression(tokens)
                 stack.append(NotExpression(expression=expression))
-            elif next_token.value.upper() == "TRUE":
+            elif tokens[0].value.upper() == "TRUE":
+                tokens = tokens[1:]
                 stack.append(TrueExpression())
-            elif next_token.value.upper() == "FALSE":
+            elif tokens[0].value.upper() == "FALSE":
+                tokens = tokens[1:]
                 stack.append(FalseExpression())
-            elif next_token.value.upper() == "IS":
+            elif tokens[0].value.upper() == "IS":
+                tokens = tokens[1:]
                 left = stack.pop()
                 right, tokens = parse_expression(tokens)
                 stack.append(IsExpression(left=left, right=right, is_not=False))
-            elif next_token.value.upper() == "IS NOT":
+            elif tokens[0].value.upper() == "IS NOT":
+                tokens = tokens[1:]
                 left = stack.pop()
                 right, tokens = parse_expression(tokens)
                 stack.append(IsExpression(left=left, right=right, is_not=True))
-            elif next_token.value.upper() == "NULL":
+            elif tokens[0].value.upper() == "NULL":
+                tokens = tokens[1:]
                 stack.append(NullExpression())
             else:
-                tokens = [next_token] + tokens
-            break
-        if next_token.type == "int":
-            stack.append(IntExpression(value=int(next_token.value)))
-        elif next_token.type == "float":
-            stack.append(FloatExpression(value=float(next_token.value)))
-        elif next_token.type == "str":
-            stack.append(StringExpression(value=next_token.value))
-        elif next_token.type == "name":
-            name_value = next_token.value
-            if tokens and tokens[0].type == "paren_left":
+                break
+        elif tokens[0].type == "int":
+            stack.append(IntExpression(value=int(tokens[0].value)))
+            tokens = tokens[1:]
+        elif tokens[0].type == "float":
+            stack.append(FloatExpression(value=float(tokens[0].value)))
+            tokens = tokens[1:]
+        elif tokens[0].type == "str":
+            stack.append(StringExpression(value=tokens[0].value))
+            tokens = tokens[1:]
+        elif tokens[0].type == "name":
+            name_value = tokens[0].value
+            tokens = tokens[1:]
+
+            if not tokens or tokens[0].type != "paren_left":
+                stack.append(NameExpression(name=name_value))
+                continue
+            else:
                 if (
-                    next_token.value.lower() == "count"
+                    name_value.lower() == "count"
                     and tokens[1].type == "wildcard"
                     and tokens[2].type == "paren_right"
                 ):
@@ -129,69 +170,81 @@ def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
                     stack.append(
                         FunctionCallExpression(name="count", args=[Wildcard()])
                     )
-                    continue
-                tokens = tokens[1:]
-                args = []
-                while True:
-                    param_expression, tokens = parse_expression(tokens)
-                    args.append(param_expression)
-                    if tokens and tokens[0].type == "comma":
-                        tokens = tokens[1:]
-                    elif tokens and tokens[0].type == "paren_right":
-                        tokens = tokens[1:]
-                        break
-                    else:
-                        raise ValueError("Expected comma or closing parenthesis")
+                else:
+                    tokens = tokens[1:]
+                    args = []
+                    while True:
+                        param_expression, tokens = parse_expression(tokens)
+                        args.append(param_expression)
+                        if tokens[0].type == "comma":
+                            tokens = tokens[1:]
+                            continue
+                        elif tokens[0].type == "paren_right":
+                            tokens = tokens[1:]
+                            break
+                        else:
+                            raise ValueError("Expected comma or closing parenthesis")
 
-                stack.append(FunctionCallExpression(name=name_value, args=args))
-            else:
-                stack.append(NameExpression(name=name_value))
-        elif next_token.type == "operator":
-            operator = next_token.value
+                    stack.append(FunctionCallExpression(name=name_value, args=args))
+            print(f"{stack=}")
+            print(f"{tokens=}")
+            continue
+        elif tokens[0].type == "operator":
+            operator = tokens[0].value
+            print(f"Operator: {operator}")
             if operator == "+":
+                tokens = tokens[1:]
                 left = stack.pop()
                 right, tokens = parse_expression(tokens)
                 stack.append(PlusExpression(left=left, right=right))
             elif operator == "-":
+                tokens = tokens[1:]
                 left = stack.pop()
                 right, tokens = parse_expression(tokens)
                 stack.append(MinusExpression(left=left, right=right))
             elif operator == "*":
+                tokens = tokens[1:]
                 left = stack.pop()
                 right, tokens = parse_expression(tokens)
                 stack.append(MultiplyExpression(left=left, right=right))
             elif operator == "/":
+                tokens = tokens[1:]
                 left = stack.pop()
                 right, tokens = parse_expression(tokens)
                 stack.append(DivideExpression(left=left, right=right))
             elif operator == "=":
+                tokens = tokens[1:]
                 left = stack.pop()
                 right, tokens = parse_expression(tokens)
                 stack.append(EqualExpression(left=left, right=right))
             elif operator == "<":
+                tokens = tokens[1:]
                 left = stack.pop()
                 right, tokens = parse_expression(tokens)
                 stack.append(LessThanExpression(left=left, right=right))
             elif operator == "<=":
+                tokens = tokens[1:]
                 left = stack.pop()
                 right, tokens = parse_expression(tokens)
                 stack.append(LessThanOrEqualExpression(left=left, right=right))
             elif operator == ">":
+                tokens = tokens[1:]
                 left = stack.pop()
                 right, tokens = parse_expression(tokens)
                 stack.append(GreaterThanExpression(left=left, right=right))
             elif operator == ">=":
+                tokens = tokens[1:]
                 left = stack.pop()
                 right, tokens = parse_expression(tokens)
                 stack.append(GreaterThanOrEqualExpression(left=left, right=right))
             elif operator == "!=" or operator == "<>":
+                tokens = tokens[1:]
                 left = stack.pop()
                 right, tokens = parse_expression(tokens)
                 stack.append(NotEqualExpression(left=left, right=right))
             else:
                 raise ValueError(f"Unknown operator: {operator}")
         else:
-            tokens = [next_token] + tokens
             break
     if len(stack) == 1:
         return stack[0], tokens
@@ -440,23 +493,41 @@ def parse_select(tokens: List[Token]) -> Tuple[Select, List[Token]]:
     accepted_keywords = accept_keyword(tokens, accepted_keywords)
     field_parts, tokens = parse_fields(tokens)
 
-    accepted_keywords = accept_keyword(tokens, accepted_keywords)
-    from_part, tokens = parse_from(tokens)
+    if tokens and tokens[0].type != "paren_right":
+        accepted_keywords = accept_keyword(tokens, accepted_keywords)
+        from_part, tokens = parse_from(tokens)
+    else:
+        from_part = None
 
-    accepted_keywords = accept_keyword(tokens, accepted_keywords)
-    where_part, tokens = parse_where(tokens)
+    if tokens and tokens[0].type != "paren_right":
+        accepted_keywords = accept_keyword(tokens, accepted_keywords)
+        where_part, tokens = parse_where(tokens)
+    else:
+        where_part = None
 
-    accepted_keywords = accept_keyword(tokens, accepted_keywords)
-    group_part, tokens = parse_group_by(tokens)
+    if tokens and tokens[0].type != "paren_right":
+        accepted_keywords = accept_keyword(tokens, accepted_keywords)
+        group_part, tokens = parse_group_by(tokens)
+    else:
+        group_part = None
 
-    accepted_keywords = accept_keyword(tokens, accepted_keywords)
-    having_part, tokens = parse_having(tokens)
+    if tokens and tokens[0].type != "paren_right":
+        accepted_keywords = accept_keyword(tokens, accepted_keywords)
+        having_part, tokens = parse_having(tokens)
+    else:
+        having_part = None
 
-    accepted_keywords = accept_keyword(tokens, accepted_keywords)
-    order_part, tokens = parse_order(tokens)
+    if tokens and tokens[0].type != "paren_right":
+        accepted_keywords = accept_keyword(tokens, accepted_keywords)
+        order_part, tokens = parse_order(tokens)
+    else:
+        order_part = None
 
-    accepted_keywords = accept_keyword(tokens, accepted_keywords)
-    limit_part, tokens = parse_limit(tokens)
+    if tokens and tokens[0].type != "paren_right":
+        accepted_keywords = accept_keyword(tokens, accepted_keywords)
+        limit_part, tokens = parse_limit(tokens)
+    else:
+        limit_part = None
 
     return Select(
         field_parts=field_parts,
@@ -469,8 +540,51 @@ def parse_select(tokens: List[Token]) -> Tuple[Select, List[Token]]:
     ), tokens
 
 
+def parse_with(tokens: List[Token]) -> Tuple[Optional[Ast], List[Token]]:
+    if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "WITH":
+        return None, tokens
+    tokens = tokens[1:]
+    parts: List[WithPart] = []
+
+    while True:
+        name = tokens[0]
+        assert name.type == "name", f"Expected name, got {name}"
+        tokens = tokens[1:]
+
+        as_token = tokens[0]
+        assert (
+            as_token.type == "keyword" and as_token.value.upper() == "AS"
+        ), f"Expected AS, got {as_token}"
+        tokens = tokens[1:]
+
+        cmd, tokens = parse_expression(tokens)
+        parts.append(WithPart(name=name.value, command=cmd))
+
+        print(tokens)
+
+        if tokens[0].type == "comma":
+            tokens = tokens[1:]
+            continue
+        else:
+            break
+
+    command, tokens = parse_command(tokens)
+    return With(parts=parts, command=command), tokens
+
+
+def parse_command(tokens: List[Token]) -> Tuple[Union[With, Select], List[Token]]:
+    if tokens[0].type == "keyword" and tokens[0].value.upper() == "WITH":
+        return parse_with(tokens)
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() == "SELECT":
+        return parse_select(tokens)
+    else:
+        raise ValueError(
+            f"Expected WITH or SELECT statement, got {tokens[0].type}: {tokens[0].value}"
+        )
+
+
 def parse(tokens: List[Token]) -> Ast:
-    select_part, tokens = parse_select(tokens)
+    select_part, tokens = parse_command(tokens)
     if tokens:
         raise ValueError(
             "Unexpected tokens after SELECT statement. Remaining tokens: " + str(tokens)

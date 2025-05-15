@@ -61,3 +61,27 @@ class FileSystemTables(ITablesSnapshot):
                     col = Column(name=key, type=type(value).__name__)
                     columns.add(col)
         return Table(name=name, columns=list(columns), data=rows)
+
+
+class ExtendedTables(ITablesSnapshot):
+    snapshot: ITablesSnapshot
+    extra_tables: List[Table]
+
+    def __init__(self, snapshot: ITablesSnapshot, tables: List[Table]):
+        self.snapshot = snapshot
+        self.extra_tables = tables
+
+    def get_table(self, name: str) -> Optional[Table]:
+        table = self.snapshot.get_table(name)
+        if table:
+            return table
+        for table in self.extra_tables:
+            if table.name == name:
+                return table
+        return None
+
+    def add_table(self, table: Table):
+        self.extra_tables.append(table)
+
+    def remove_table(self, name: str):
+        self.extra_tables = [table for table in self.extra_tables if table.name != name]

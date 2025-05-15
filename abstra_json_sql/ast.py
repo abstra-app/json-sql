@@ -207,3 +207,27 @@ class Select(Command):
     having_part: Optional[Where] = None
     order_part: Optional[OrderBy] = None
     limit_part: Optional[Limit] = None
+
+
+@dataclass
+class WithPart(Ast):
+    name: str
+    command: Command
+
+
+@dataclass
+class With(Command):
+    parts: List[WithPart]
+    command: Command
+
+
+@dataclass
+class Insert(Command): ...
+
+
+@dataclass
+class Update(Command): ...
+
+
+@dataclass
+class Delete(Command): ...

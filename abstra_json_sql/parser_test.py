@@ -10,6 +10,8 @@ from .ast import (
     FunctionCallExpression,
     SelectField,
     IntExpression,
+    With,
+    WithPart,
     NameExpression,
     IsExpression,
     EqualExpression,
@@ -152,6 +154,18 @@ class ExpressionTest(TestCase):
         )
         self.assertEqual(tokens, [])
 
+    def test_subquery_expression(self):
+        tokens = scan("(SELECT * FROM users)")
+        ast, tokens = parse_expression(tokens)
+        self.assertEqual(
+            ast,
+            Select(
+                field_parts=[SelectField(Wildcard())],
+                from_part=From(table="users"),
+            ),
+        )
+        self.assertEqual(tokens, [])
+
 
 class FromTest(TestCase):
     def test_simple(self):
@@ -206,6 +220,7 @@ class LimitTest(TestCase):
 class IsTest(TestCase):
     def test_is_expression(self):
         tokens = scan("name IS NULL")
+
         ast, tokens = parse_expression(tokens)
         self.assertEqual(
             ast,
@@ -245,3 +260,58 @@ class AcceptKeywordTest(TestCase):
         accepted_keywords = ["HAVING", "ORDER BY", "LIMIT"]
         accepted_keywords = accept_keyword(tokens, accepted_keywords)
         self.assertEqual(accepted_keywords, ["ORDER BY", "LIMIT"])
+
+
+class WithTest(TestCase):
+    def test_simple(self):
+        tokens = scan("WITH foo AS (SELECT * FROM bar) SELECT * FROM baz")
+        ast = parse(tokens)
+        self.assertEqual(
+            ast,
+            With(
+                parts=[
+                    WithPart(
+                        name="foo",
+                        command=Select(
+                            field_parts=[SelectField(Wildcard())],
+                            from_part=From(table="bar"),
+                        ),
+                    )
+                ],
+                command=Select(
+                    field_parts=[SelectField(Wildcard())],
+                    from_part=From(table="baz"),
+                ),
+            ),
+        )
+
+    def test_multiple_parts(self):
+        tokens = scan(
+            "WITH foo AS (SELECT * FROM bar), baz AS (SELECT * FROM qux) SELECT * FROM quux"
+        )
+        ast = parse(tokens)
+        self.assertEqual(
+            ast,
+            With(
+                parts=[
+                    WithPart(
+                        name="foo",
+                        command=Select(
+                            field_parts=[SelectField(Wildcard())],
+                            from_part=From(table="bar"),
+                        ),
+                    ),
+                    WithPart(
+                        name="baz",
+                        command=Select(
+                            field_parts=[SelectField(Wildcard())],
+                            from_part=From(table="qux"),
+                        ),
+                    ),
+                ],
+                command=Select(
+                    field_parts=[SelectField(Wildcard())],
+                    from_part=From(table="quux"),
+                ),
+            ),
+        )

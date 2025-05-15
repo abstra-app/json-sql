@@ -1,5 +1,5 @@
 from typing import List, Dict, Optional
-from .tables import ITablesSnapshot
+from .tables import ITablesSnapshot, Table, ExtendedTables
 from .field_name import field_name, expression_name
 from .ast import (
     Expression,
@@ -7,6 +7,7 @@ from .ast import (
     IntExpression,
     Select,
     FloatExpression,
+    With,
     NameExpression,
     From,
     SelectField,
@@ -639,8 +640,24 @@ def apply_select(select: Select, tables: ITablesSnapshot, ctx: dict):
     return data
 
 
+def apply_with(with_clause: With, tables: ITablesSnapshot, ctx: dict):
+    extra_tables: List[Table] = []
+    for part in with_clause.parts:
+        tables = ExtendedTables(tables, extra_tables)
+        data = apply_command(part.command, tables, ctx)
+        extra_table = Table(
+            columns=[],
+            data=data,
+        )
+        extra_tables.append(extra_table)
+
+    return apply_command(with_clause.command, tables, ctx)
+
+
 def apply_command(command: Command, tables: ITablesSnapshot, ctx: dict):
     if isinstance(command, Select):
         return apply_select(command, tables, ctx)
+    elif isinstance(command, With):
+        return apply_with(command, tables, ctx)
     else:
         raise ValueError(f"Unsupported command type: {type(command)}")

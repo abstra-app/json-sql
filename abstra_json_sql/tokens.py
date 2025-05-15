@@ -17,6 +17,7 @@ operators = [
 ]
 
 keywords = [
+    "WITH",
     "SELECT",
     "FROM",
     "WHERE",
