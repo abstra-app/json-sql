@@ -1,5 +1,5 @@
 from typing import List, Dict, Optional
-from .tables import ITablesSnapshot, Table, ExtendedTables
+from .tables import ITablesSnapshot, Table, ExtendedTables, Column
 from .field_name import field_name, expression_name
 from .ast import (
     Expression,
@@ -645,9 +645,13 @@ def apply_with(with_clause: With, tables: ITablesSnapshot, ctx: dict):
     for part in with_clause.parts:
         tables = ExtendedTables(tables, extra_tables)
         data = apply_command(part.command, tables, ctx)
+        assert isinstance(part.command, Select), "With parts should be Select commands"
         extra_table = Table(
             name=part.name,
-            columns=[],
+            columns=[
+                Column(name=field_name(field), type="any")  # TODO: Add type inference
+                for field in part.command.field_parts
+            ],
             data=data,
         )
         extra_tables.append(extra_table)
