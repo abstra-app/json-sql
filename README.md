@@ -77,7 +77,7 @@ print(result) # [{"foo": 3, "count": 2}]
 ```
 ## Supported SQL Syntax
 
-- [ ] `WITH`
+- [x] `WITH`
     - [ ] `RECURSIVE`
 
 - [ ] `SELECT`

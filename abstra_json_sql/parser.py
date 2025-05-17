@@ -80,12 +80,7 @@ def parse_order(tokens: List[Token]) -> Tuple[OrderBy, List[Token]]:
 def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
     stack = []
 
-    it = 0
     while tokens:
-        it = it + 1
-        print(it)
-        if it > 1000:
-            raise ValueError("Infinite loop detected in parse_expression")
         if tokens[0].type == "paren_left":
             tokens = tokens[1:]
 

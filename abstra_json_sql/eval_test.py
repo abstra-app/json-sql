@@ -665,6 +665,62 @@ class TestEvalSQL(TestCase):
             ],
         )
 
+    def test_with(self):
+        code = "with t as (select foo from bar) select * from t"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="bar",
+                    columns=[Column(name="foo", type="text")],
+                    data=[
+                        {"foo": "a"},
+                        {"foo": "b"},
+                        {"foo": None},
+                        {"foo": "c"},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result,
+            [
+                {"foo": "a"},
+                {"foo": "b"},
+                {"foo": None},
+                {"foo": "c"},
+            ],
+        )
+
+    def test_multiple_with(self):
+        code = "with t1 as (select foo from bar), t2 as (select * from t1) select * from t2"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="bar",
+                    columns=[Column(name="foo", type="text")],
+                    data=[
+                        {"foo": "a"},
+                        {"foo": "b"},
+                        {"foo": None},
+                        {"foo": "c"},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result,
+            [
+                {"foo": "a"},
+                {"foo": "b"},
+                {"foo": None},
+                {"foo": "c"},
+            ],
+        )
+
     def test_complete(self):
         code = "\n".join(
             [
