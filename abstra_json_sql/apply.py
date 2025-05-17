@@ -1,4 +1,5 @@
 from typing import List, Dict, Optional
+from .infer import infer_expression
 from .tables import ITablesSnapshot, Table, ExtendedTables, Column
 from .field_name import field_name, expression_name
 from .ast import (
@@ -649,7 +650,9 @@ def apply_with(with_clause: With, tables: ITablesSnapshot, ctx: dict):
         extra_table = Table(
             name=part.name,
             columns=[
-                Column(name=field_name(field), type="any")  # TODO: Add type inference
+                Column(
+                    name=field_name(field), type=infer_expression(field.expression, ctx)
+                )
                 for field in part.command.field_parts
             ],
             data=data,
