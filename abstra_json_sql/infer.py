@@ -11,16 +11,6 @@ from .ast import (
 
 
 def infer_expression(expr: Expression, ctx: dict):
-    """
-    Infers the type of an expression based on its structure and context.
-
-    Args:
-        expr (Expression): The expression to infer.
-        ctx (dict): The context for type inference.
-
-    Returns:
-        str: The inferred type of the expression.
-    """
     if isinstance(expr, StringExpression):
         return "string"
     elif isinstance(expr, IntExpression):
