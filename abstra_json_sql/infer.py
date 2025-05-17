@@ -1,3 +1,4 @@
+from .tables import ColumnType
 from .ast import (
     Expression,
     StringExpression,
@@ -10,7 +11,7 @@ from .ast import (
 )
 
 
-def infer_expression(expr: Expression, ctx: dict):
+def infer_expression(expr: Expression, ctx: dict) -> ColumnType:
     if isinstance(expr, StringExpression):
         return "string"
     elif isinstance(expr, IntExpression):

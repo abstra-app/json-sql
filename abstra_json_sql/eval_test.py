@@ -1,6 +1,6 @@
 from unittest import TestCase
 from .eval import eval_sql
-from .tables import InMemoryTables, Table, Column
+from .tables import InMemoryTables, Table, Column, ColumnType
 
 
 class TestEvalSQL(TestCase):
@@ -28,7 +28,7 @@ class TestEvalSQL(TestCase):
             tables=[
                 Table(
                     name="bar",
-                    columns=[Column(name="foo", type="text")],
+                    columns=[Column(name="foo", type=ColumnType.string)],
                     data=[
                         {"foo": "AAA"},
                         {"foo": "BBB"},
@@ -54,7 +54,7 @@ class TestEvalSQL(TestCase):
             tables=[
                 Table(
                     name="bar",
-                    columns=[Column(name="foo", type="text")],
+                    columns=[Column(name="foo", type=ColumnType.string)],
                     data=[
                         {"foo": "aaa"},
                         {"foo": "bbb"},
@@ -80,7 +80,7 @@ class TestEvalSQL(TestCase):
             tables=[
                 Table(
                     name="bar",
-                    columns=[Column(name="foo", type="text")],
+                    columns=[Column(name="foo", type=ColumnType.string)],
                     data=[
                         {"foo": "aaa"},
                         {"foo": "bbb"},
@@ -100,7 +100,7 @@ class TestEvalSQL(TestCase):
             tables=[
                 Table(
                     name="bar",
-                    columns=[Column(name="foo", type="text")],
+                    columns=[Column(name="foo", type=ColumnType.string)],
                     data=[
                         {"foo": "aaa"},
                         {"foo": "bbb"},
@@ -320,7 +320,7 @@ class TestEvalSQL(TestCase):
             tables=[
                 Table(
                     name="bar",
-                    columns=[Column(name="foo", type="text")],
+                    columns=[Column(name="foo", type=ColumnType.string)],
                     data=[
                         {"foo": "a"},
                         {"foo": "b"},
@@ -340,7 +340,7 @@ class TestEvalSQL(TestCase):
             tables=[
                 Table(
                     name="bar",
-                    columns=[Column(name="foo", type="text")],
+                    columns=[Column(name="foo", type=ColumnType.string)],
                     data=[
                         {"foo": "a"},
                         {"foo": "b"},
@@ -360,7 +360,7 @@ class TestEvalSQL(TestCase):
             tables=[
                 Table(
                     name="bar",
-                    columns=[Column(name="foo", type="text")],
+                    columns=[Column(name="foo", type=ColumnType.string)],
                     data=[
                         {"foo": "a"},
                         {"foo": "b"},
@@ -380,7 +380,7 @@ class TestEvalSQL(TestCase):
             tables=[
                 Table(
                     name="bar",
-                    columns=[Column(name="foo", type="text")],
+                    columns=[Column(name="foo", type=ColumnType.string)],
                     data=[
                         {"foo": "c"},
                         {"foo": "b"},
@@ -402,7 +402,7 @@ class TestEvalSQL(TestCase):
             tables=[
                 Table(
                     name="bar",
-                    columns=[Column(name="foo", type="text")],
+                    columns=[Column(name="foo", type=ColumnType.string)],
                     data=[
                         {"foo": "c"},
                         {"foo": "b"},
@@ -424,7 +424,7 @@ class TestEvalSQL(TestCase):
             tables=[
                 Table(
                     name="bar",
-                    columns=[Column(name="foo", type="text")],
+                    columns=[Column(name="foo", type=ColumnType.string)],
                     data=[
                         {"foo": "c"},
                         {"foo": "b"},
@@ -446,7 +446,7 @@ class TestEvalSQL(TestCase):
             tables=[
                 Table(
                     name="bar",
-                    columns=[Column(name="foo", type="text")],
+                    columns=[Column(name="foo", type=ColumnType.string)],
                     data=[
                         {"foo": "a"},
                         {"foo": "b"},
@@ -473,7 +473,7 @@ class TestEvalSQL(TestCase):
             tables=[
                 Table(
                     name="bar",
-                    columns=[Column(name="foo", type="text")],
+                    columns=[Column(name="foo", type=ColumnType.string)],
                     data=[
                         {"foo": "a"},
                         {"foo": "b"},
@@ -503,7 +503,7 @@ class TestEvalSQL(TestCase):
                     name="a",
                     columns=[
                         Column(name="id", type="int"),
-                        Column(name="foo", type="text"),
+                        Column(name="foo", type=ColumnType.string),
                     ],
                     data=[
                         {"id": 1, "foo": "a1"},
@@ -515,7 +515,7 @@ class TestEvalSQL(TestCase):
                     name="b",
                     columns=[
                         Column(name="a_id", type="int"),
-                        Column(name="bar", type="text"),
+                        Column(name="bar", type=ColumnType.string),
                     ],
                     data=[
                         {"a_id": 1, "bar": "b1"},
@@ -544,7 +544,7 @@ class TestEvalSQL(TestCase):
                     name="a",
                     columns=[
                         Column(name="id", type="int"),
-                        Column(name="foo", type="text"),
+                        Column(name="foo", type=ColumnType.string),
                     ],
                     data=[
                         {"id": 1, "foo": "a1"},
@@ -556,7 +556,7 @@ class TestEvalSQL(TestCase):
                     name="b",
                     columns=[
                         Column(name="a_id", type="int"),
-                        Column(name="bar", type="text"),
+                        Column(name="bar", type=ColumnType.string),
                     ],
                     data=[
                         {"a_id": 1, "bar": "b1"},
@@ -586,7 +586,7 @@ class TestEvalSQL(TestCase):
                     name="a",
                     columns=[
                         Column(name="id", type="int"),
-                        Column(name="foo", type="text"),
+                        Column(name="foo", type=ColumnType.string),
                     ],
                     data=[
                         {"id": 1, "foo": "a1"},
@@ -598,7 +598,7 @@ class TestEvalSQL(TestCase):
                     name="b",
                     columns=[
                         Column(name="a_id", type="int"),
-                        Column(name="bar", type="text"),
+                        Column(name="bar", type=ColumnType.string),
                     ],
                     data=[
                         {"a_id": 1, "bar": "b1"},
@@ -629,7 +629,7 @@ class TestEvalSQL(TestCase):
                     name="a",
                     columns=[
                         Column(name="id", type="int"),
-                        Column(name="foo", type="text"),
+                        Column(name="foo", type=ColumnType.string),
                     ],
                     data=[
                         {"id": 1, "foo": "a1"},
@@ -641,7 +641,7 @@ class TestEvalSQL(TestCase):
                     name="b",
                     columns=[
                         Column(name="a_id", type="int"),
-                        Column(name="bar", type="text"),
+                        Column(name="bar", type=ColumnType.string),
                     ],
                     data=[
                         {"a_id": 1, "bar": "b1"},
@@ -671,7 +671,7 @@ class TestEvalSQL(TestCase):
             tables=[
                 Table(
                     name="bar",
-                    columns=[Column(name="foo", type="text")],
+                    columns=[Column(name="foo", type=ColumnType.string)],
                     data=[
                         {"foo": "a"},
                         {"foo": "b"},
@@ -699,7 +699,7 @@ class TestEvalSQL(TestCase):
             tables=[
                 Table(
                     name="bar",
-                    columns=[Column(name="foo", type="text")],
+                    columns=[Column(name="foo", type=ColumnType.string)],
                     data=[
                         {"foo": "a"},
                         {"foo": "b"},
@@ -737,7 +737,7 @@ class TestEvalSQL(TestCase):
             tables=[
                 Table(
                     name="bar",
-                    columns=[Column(name="foo", type="text")],
+                    columns=[Column(name="foo", type=ColumnType.string)],
                     data=[
                         {"foo": 1},
                         {"foo": 2},

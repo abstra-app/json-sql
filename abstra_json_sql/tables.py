@@ -3,6 +3,16 @@ from pydantic import BaseModel
 from pathlib import Path
 from abc import ABC, abstractmethod
 import json
+from enum import Enum
+
+
+class ColumnType(Enum):
+    int = "int"
+    string = "string"
+    float = "float"
+    bool = "bool"
+    null = "null"
+    unknown = "unknown"
 
 
 class ForeignKey(BaseModel):
@@ -12,7 +22,7 @@ class ForeignKey(BaseModel):
 
 class Column(BaseModel):
     name: str
-    type: str
+    type: ColumnType
     is_primary_key: bool = False
     foreign_key: Optional[ForeignKey] = None
 
