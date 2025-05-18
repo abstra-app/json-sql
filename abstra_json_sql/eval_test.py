@@ -774,6 +774,59 @@ class TestEvalSQL(TestCase):
             ],
         )
 
+    def test_insert_returning_wildcard(self):
+        code = "insert into bar (foo) values ('a'), ('b'), ('c') returning *"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="bar",
+                    columns=[Column(name="foo", type=ColumnType.string)],
+                    data=[],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result,
+            [
+                {"foo": "a"},
+                {"foo": "b"},
+                {"foo": "c"},
+            ],
+        )
+        self.assertEqual(
+            tables.get_table("bar").data,
+            [
+                {"foo": "a"},
+                {"foo": "b"},
+                {"foo": "c"},
+            ],
+        )
+
+    def test_insert_default(self):
+        code = "insert into bar (foo) default values"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="bar",
+                    columns=[
+                        Column(name="foo", type=ColumnType.string, default="'lala'")
+                    ],
+                    data=[],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertIsNone(result)
+        self.assertEqual(
+            tables.get_table("bar").data,
+            [
+                {"foo": "lala"},
+            ],
+        )
+
     def test_complete(self):
         code = "\n".join(
             [

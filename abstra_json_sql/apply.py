@@ -1,5 +1,7 @@
 from typing import List, Dict, Optional
 from .infer import infer_expression
+from .parser import parse_expression
+from .lexer import scan
 from .tables import ITablesSnapshot, Table, ExtendedTables, Column
 from .field_name import field_name, expression_name
 from .ast import (
@@ -393,6 +395,8 @@ def apply_expression(expression: Expression, ctx: dict):
             raise ValueError(
                 f"Unsupported types for OR: {type(left_value)}, {type(right_value)}"
             )
+    elif isinstance(expression, DefaultExpression):
+        raise ValueError("Default expression cannot be used in expressions")
     elif isinstance(expression, Wildcard):
         raise ValueError("Wildcard cannot be used in expressions")
     else:
@@ -645,6 +649,7 @@ def apply_select(select: Select, tables: ITablesSnapshot, ctx: dict):
 
 def apply_insert(insert: Insert, tables: ITablesSnapshot, ctx: dict):
     returning_values = []
+    table = tables.get_table(insert.table_name)
     if insert.values:
         for value_set in insert.values:
             new_row = {
@@ -655,7 +660,10 @@ def apply_insert(insert: Insert, tables: ITablesSnapshot, ctx: dict):
             returning_values.append(new_row)
     else:
         new_row = {
-            col: apply_expression(DefaultExpression(), ctx) for col in insert.columns
+            col_name: apply_expression(
+                parse_expression(scan(table.get_column(col_name).default))[0], ctx
+            )
+            for col_name in insert.columns
         }
         tables.insert(insert.table_name, new_row)
         returning_values.append(new_row)

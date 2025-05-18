@@ -25,6 +25,7 @@ class Column(BaseModel):
     type: ColumnType
     is_primary_key: bool = False
     foreign_key: Optional[ForeignKey] = None
+    default: Optional[str] = None
 
     def __hash__(self):
         return hash((self.name, self.type, self.is_primary_key, self.foreign_key))
@@ -34,6 +35,12 @@ class Table(BaseModel):
     name: str
     columns: List[Column]
     data: List[dict] = []
+
+    def get_column(self, name: str) -> Optional[Column]:
+        for column in self.columns:
+            if column.name == name:
+                return column
+        return None
 
 
 class ITablesSnapshot(ABC):
