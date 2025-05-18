@@ -101,7 +101,12 @@ print(result) # [{"foo": 3, "count": 2}]
     - [ ] `FETCH`
     - [ ] `FOR`
 
-- [ ] `INSERT`
+- [x] `INSERT`
+    - [x] `INTO`
+    - [x] `VALUES`
+    - [x] `DEFAULT`
+    - [ ] `SELECT`
+    - [x] `RETURNING`
 - [ ] `UPDATE`
 - [ ] `DELETE`
 
