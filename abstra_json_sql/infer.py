@@ -17,22 +17,22 @@ from .ast import (
 
 def infer_expression(expr: Expression, ctx: dict) -> ColumnType:
     if isinstance(expr, StringExpression):
-        return "string"
+        return ColumnType.string
     elif isinstance(expr, IntExpression):
-        return "integer"
+        return ColumnType.int
     elif isinstance(expr, FloatExpression):
-        return "float"
+        return ColumnType.float
     elif isinstance(expr, TrueExpression) or isinstance(expr, FalseExpression):
-        return "boolean"
+        return ColumnType.bool
     elif isinstance(expr, NullExpression):
-        return "null"
+        return ColumnType.null
     elif isinstance(expr, FunctionCallExpression):
         if expr.name == "count":
-            return "integer"
+            return ColumnType.int
         elif expr.name == "sum":
-            return "float"
+            return ColumnType.float
         elif expr.name == "avg":
-            return "float"
+            return ColumnType.float
     elif (
         isinstance(expr, PlusExpression)
         or isinstance(expr, MinusExpression)
@@ -41,11 +41,11 @@ def infer_expression(expr: Expression, ctx: dict) -> ColumnType:
     ):
         left_type = infer_expression(expr.left, ctx)
         right_type = infer_expression(expr.right, ctx)
-        if left_type == "integer" and right_type == "integer":
-            return "integer"
-        elif left_type == "float" or right_type == "float":
-            return "float"
+        if left_type == ColumnType.int and right_type == ColumnType.int:
+            return ColumnType.int
+        elif left_type == ColumnType.float or right_type == ColumnType.float:
+            return ColumnType.float
         else:
-            return "unknown"
+            return ColumnType.unknown
     else:
-        return "unknown"
+        return ColumnType.unknown
