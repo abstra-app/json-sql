@@ -4,6 +4,7 @@ from .lexer import scan
 from .tokens import Token
 from .ast import (
     Select,
+    Insert,
     From,
     Wildcard,
     PlusExpression,
@@ -313,5 +314,78 @@ class WithTest(TestCase):
                     field_parts=[SelectField(Wildcard())],
                     from_part=From(table="quux"),
                 ),
+            ),
+        )
+
+
+class InsertTest(TestCase):
+    def test_simple(self):
+        tokens = scan("INSERT INTO users (name, age) VALUES ('John', 30)")
+        ast = parse(tokens)
+        self.assertEqual(
+            ast,
+            Insert(
+                table="users",
+                table_alias=None,
+                columns=["name", "age"],
+                values=[
+                    [
+                        StringExpression(value="John"),
+                        IntExpression(value=30),
+                    ]
+                ],
+                returning_fields=None,
+            ),
+        )
+
+    def test_with_alias(self):
+        tokens = scan("INSERT INTO users AS u (name, age) VALUES ('John', 30)")
+        ast = parse(tokens)
+        self.assertEqual(
+            ast,
+            Insert(
+                table="users",
+                table_alias="u",
+                columns=["name", "age"],
+                values=[
+                    [
+                        StringExpression(value="John"),
+                        IntExpression(value=30),
+                    ]
+                ],
+                returning_fields=None,
+            ),
+        )
+
+    def test_with_returning(self):
+        tokens = scan("INSERT INTO users (name, age) VALUES ('John', 30) RETURNING id")
+        ast = parse(tokens)
+        self.assertEqual(
+            ast,
+            Insert(
+                table="users",
+                table_alias=None,
+                columns=["name", "age"],
+                values=[
+                    [
+                        StringExpression(value="John"),
+                        IntExpression(value=30),
+                    ]
+                ],
+                returning_fields=[SelectField(expression=NameExpression(name="id"))],
+            ),
+        )
+
+    def test_with_default_values(self):
+        tokens = scan("INSERT INTO users DEFAULT VALUES")
+        ast = parse(tokens)
+        self.assertEqual(
+            ast,
+            Insert(
+                table="users",
+                table_alias=None,
+                columns=None,
+                values=None,
+                returning_fields=None,
             ),
         )

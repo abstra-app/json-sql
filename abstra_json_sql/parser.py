@@ -403,8 +403,16 @@ def parse_from(tokens: List[Token]) -> Tuple[Optional[From], List[Token]]:
 
 
 def parse_fields(tokens: List[Token]) -> Tuple[List[SelectField], List[Token]]:
-    if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "SELECT":
-        raise ValueError("Expected SELECT statement")
+    if (
+        not tokens
+        or tokens[0].type != "keyword"
+        or tokens[0].value.upper()
+        not in [
+            "SELECT",
+            "RETURNING",
+        ]
+    ):
+        raise ValueError(f"Expected SELECT or RETURNING statement, got {tokens[0]}")
     tokens = tokens[1:]
     fields: List[SelectField] = []
     while tokens:
@@ -584,7 +592,7 @@ def parse_insert(tokens: List[Token]) -> Tuple[Ast, List[Token]]:
     if tokens[0].type == "keyword" and tokens[0].value.upper() == "VALUES":
         tokens = tokens[1:]
         rows: List[List[Expression]] = []
-        while True:
+        while tokens:
             if tokens[0].type == "paren_left":
                 tokens = tokens[1:]
                 value_expressions: List[Expression] = []
@@ -630,7 +638,6 @@ def parse_insert(tokens: List[Token]) -> Tuple[Ast, List[Token]]:
         and tokens[0].type == "keyword"
         and tokens[0].value.upper() == "RETURNING"
     ):
-        tokens = tokens[1:]
         returning_fields, tokens = parse_fields(tokens)
     else:
         returning_fields = None
