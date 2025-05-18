@@ -41,6 +41,10 @@ class ITablesSnapshot(ABC):
     def get_table(self, name: str) -> Optional[Table]:
         raise NotImplementedError("get_table method must be implemented")
 
+    @abstractmethod
+    def insert(table_name: str, row: dict):
+        raise NotImplementedError("insert method must be implemented")
+
 
 class InMemoryTables(BaseModel, ITablesSnapshot):
     tables: List[Table]
@@ -50,6 +54,12 @@ class InMemoryTables(BaseModel, ITablesSnapshot):
             if table.name == name:
                 return table
         return None
+
+    def insert(self, table: str, row: dict):
+        table_obj = self.get_table(table)
+        if table_obj is None:
+            raise ValueError(f"Table {table} not found")
+        table_obj.data.append(row)
 
 
 class FileSystemTables(ITablesSnapshot):
@@ -71,6 +81,17 @@ class FileSystemTables(ITablesSnapshot):
                     col = Column(name=key, type=type(value).__name__)
                     columns.add(col)
         return Table(name=name, columns=list(columns), data=rows)
+
+    def insert(self, table_name: str, row: dict):
+        table_path = self.workdir / f"{table_name}.json"
+        if not table_path.exists():
+            raise FileNotFoundError(f"File {table_path} does not exist")
+        rows = json.loads(table_path.read_text())
+        assert isinstance(
+            rows, list
+        ), f"File {table_path} does not contain a list of rows"
+        rows.append(row)
+        table_path.write_text(json.dumps(rows))
 
 
 class ExtendedTables(ITablesSnapshot):
@@ -95,3 +116,10 @@ class ExtendedTables(ITablesSnapshot):
 
     def remove_table(self, name: str):
         self.extra_tables = [table for table in self.extra_tables if table.name != name]
+
+    def insert(self, table_name: str, row: dict):
+        for table in self.extra_tables:
+            if table.name == table_name:
+                table.data.append(row)
+                return
+        self.snapshot.insert(table_name, row)

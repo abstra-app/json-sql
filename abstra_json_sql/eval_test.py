@@ -721,6 +721,28 @@ class TestEvalSQL(TestCase):
             ],
         )
 
+    def test_insert(self):
+        code = "insert into bar (foo) values ('a'), ('b'), ('c') returning foo"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="bar",
+                    columns=[Column(name="foo", type=ColumnType.string)],
+                    data=[],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result,
+            [
+                {"foo": "a"},
+                {"foo": "b"},
+                {"foo": "c"},
+            ],
+        )
+
     def test_complete(self):
         code = "\n".join(
             [

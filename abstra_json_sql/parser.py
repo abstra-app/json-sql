@@ -642,7 +642,7 @@ def parse_insert(tokens: List[Token]) -> Tuple[Ast, List[Token]]:
     else:
         returning_fields = None
     return Insert(
-        table=table.value,
+        table_name=table.value,
         table_alias=alias_name,
         columns=columns,
         values=rows,

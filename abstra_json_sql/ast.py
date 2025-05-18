@@ -228,10 +228,10 @@ class With(Command):
 
 @dataclass
 class Insert(Command):
-    table: str
+    table_name: str
     table_alias: Optional[str] = None
-    columns: List[str] = None
-    values: List[List[Expression]] = None
+    columns: Optional[List[str]] = None
+    values: Optional[List[List[Expression]]] = None
     returning_fields: Optional[List[SelectField]] = None
 
 

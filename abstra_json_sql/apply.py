@@ -10,6 +10,7 @@ from .ast import (
     FloatExpression,
     With,
     NameExpression,
+    DefaultExpression,
     From,
     SelectField,
     Where,
@@ -18,6 +19,7 @@ from .ast import (
     FunctionCallExpression,
     Command,
     PlusExpression,
+    Insert,
     NullExpression,
     NotExpression,
     AndExpression,
@@ -641,6 +643,29 @@ def apply_select(select: Select, tables: ITablesSnapshot, ctx: dict):
     return data
 
 
+def apply_insert(insert: Insert, tables: ITablesSnapshot, ctx: dict):
+    returning_values = []
+    if insert.values:
+        for value_set in insert.values:
+            new_row = {
+                col: apply_expression(value, ctx)
+                for col, value in zip(insert.columns, value_set)
+            }
+            tables.insert(insert.table_name, new_row)
+            returning_values.append(new_row)
+    else:
+        new_row = {
+            col: apply_expression(DefaultExpression(), ctx) for col in insert.columns
+        }
+        tables.insert(insert.table_name, new_row)
+        returning_values.append(new_row)
+
+    if insert.returning_fields:
+        return returning_values
+    else:
+        return None
+
+
 def apply_with(with_clause: With, tables: ITablesSnapshot, ctx: dict):
     extra_tables: List[Table] = []
     for part in with_clause.parts:
@@ -667,5 +692,7 @@ def apply_command(command: Command, tables: ITablesSnapshot, ctx: dict):
         return apply_select(command, tables, ctx)
     elif isinstance(command, With):
         return apply_with(command, tables, ctx)
+    elif isinstance(command, Insert):
+        return apply_insert(command, tables, ctx)
     else:
         raise ValueError(f"Unsupported command type: {type(command)}")

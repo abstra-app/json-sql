@@ -325,7 +325,7 @@ class InsertTest(TestCase):
         self.assertEqual(
             ast,
             Insert(
-                table="users",
+                table_name="users",
                 table_alias=None,
                 columns=["name", "age"],
                 values=[
@@ -344,7 +344,7 @@ class InsertTest(TestCase):
         self.assertEqual(
             ast,
             Insert(
-                table="users",
+                table_name="users",
                 table_alias="u",
                 columns=["name", "age"],
                 values=[
@@ -363,7 +363,7 @@ class InsertTest(TestCase):
         self.assertEqual(
             ast,
             Insert(
-                table="users",
+                table_name="users",
                 table_alias=None,
                 columns=["name", "age"],
                 values=[
@@ -382,7 +382,7 @@ class InsertTest(TestCase):
         self.assertEqual(
             ast,
             Insert(
-                table="users",
+                table_name="users",
                 table_alias=None,
                 columns=None,
                 values=None,
