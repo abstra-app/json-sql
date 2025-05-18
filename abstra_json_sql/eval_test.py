@@ -804,7 +804,7 @@ class TestEvalSQL(TestCase):
             ],
         )
 
-    def test_insert_default(self):
+    def test_insert_default_values(self):
         code = "insert into bar (foo) default values"
         tables = InMemoryTables(
             tables=[
@@ -824,6 +824,53 @@ class TestEvalSQL(TestCase):
             tables.get_table("bar").data,
             [
                 {"foo": "lala"},
+            ],
+        )
+
+    def test_insert_default_value_in_single_column(self):
+        code = "insert into bar (foo) values (default)"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="bar",
+                    columns=[
+                        Column(name="foo", type=ColumnType.string, default="'lala'")
+                    ],
+                    data=[],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertIsNone(result)
+        self.assertEqual(
+            tables.get_table("bar").data,
+            [
+                {"foo": "lala"},
+            ],
+        )
+
+    def test_insert_omit_default_value(self):
+        code = "insert into t (c1) values ('xpto')"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="t",
+                    columns=[
+                        Column(name="c1", type=ColumnType.string),
+                        Column(name="c2", type=ColumnType.string, default="'lala'"),
+                    ],
+                    data=[],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertIsNone(result)
+        self.assertEqual(
+            tables.get_table("t").data,
+            [
+                {"c1": "xpto", "c2": "lala"},
             ],
         )
 

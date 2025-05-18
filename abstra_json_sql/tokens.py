@@ -22,6 +22,7 @@ keywords = [
     "INSERT INTO",
     "VALUES",
     "DEFAULT VALUES",
+    "DEFAULT",
     "RETURNING",
     "FROM",
     "WHERE",

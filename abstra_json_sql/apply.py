@@ -647,24 +647,38 @@ def apply_select(select: Select, tables: ITablesSnapshot, ctx: dict):
     return data
 
 
+def default_row(table: Table, ctx: dict) -> dict:
+    result_row = {}
+    for col in table.columns:
+        exp_str = col.default
+        if exp_str is None:
+            continue
+        exp, _ = parse_expression(scan(exp_str))
+        result_row[col.name] = apply_expression(exp, ctx)
+
+    return result_row
+
+
 def apply_insert(insert: Insert, tables: ITablesSnapshot, ctx: dict):
     returning_values = []
     table = tables.get_table(insert.table_name)
     if insert.values:
         for value_set in insert.values:
-            new_row = {
-                col: apply_expression(value, ctx)
-                for col, value in zip(insert.columns, value_set)
-            }
+            new_row = default_row(table, ctx)
+            new_row.update(
+                {
+                    col: apply_expression(
+                        value,
+                        ctx,
+                    )
+                    for col, value in zip(insert.columns, value_set)
+                    if not isinstance(value, DefaultExpression)
+                }
+            )
             tables.insert(insert.table_name, new_row)
             returning_values.append(new_row)
     else:
-        new_row = {
-            col_name: apply_expression(
-                parse_expression(scan(table.get_column(col_name).default))[0], ctx
-            )
-            for col_name in insert.columns
-        }
+        new_row = default_row(table, ctx)
         tables.insert(insert.table_name, new_row)
         returning_values.append(new_row)
 
