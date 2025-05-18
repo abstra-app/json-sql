@@ -7,6 +7,10 @@ from .ast import (
     NullExpression,
     TrueExpression,
     FalseExpression,
+    PlusExpression,
+    MinusExpression,
+    MultiplyExpression,
+    DivideExpression,
     FunctionCallExpression,
 )
 
@@ -29,5 +33,19 @@ def infer_expression(expr: Expression, ctx: dict) -> ColumnType:
             return "float"
         elif expr.name == "avg":
             return "float"
+    elif (
+        isinstance(expr, PlusExpression)
+        or isinstance(expr, MinusExpression)
+        or isinstance(expr, MultiplyExpression)
+        or isinstance(expr, DivideExpression)
+    ):
+        left_type = infer_expression(expr.left, ctx)
+        right_type = infer_expression(expr.right, ctx)
+        if left_type == "integer" and right_type == "integer":
+            return "integer"
+        elif left_type == "float" or right_type == "float":
+            return "float"
+        else:
+            return "unknown"
     else:
         return "unknown"
