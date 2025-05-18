@@ -64,6 +64,11 @@ class TrueExpression(Expression):
 
 
 @dataclass
+class DefaultExpression(Expression):
+    pass
+
+
+@dataclass
 class NotExpression(Expression):
     expression: Expression
 
@@ -222,7 +227,12 @@ class With(Command):
 
 
 @dataclass
-class Insert(Command): ...
+class Insert(Command):
+    table: str
+    table_alias: Optional[str] = None
+    columns: List[str] = None
+    values: List[List[Expression]] = None
+    returning_fields: Optional[List[SelectField]] = None
 
 
 @dataclass

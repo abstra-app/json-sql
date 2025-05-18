@@ -19,6 +19,9 @@ operators = [
 keywords = [
     "WITH",
     "SELECT",
+    "INSERT INTO",
+    "VALUES",
+    "DEFAULT VALUES",
     "FROM",
     "WHERE",
     "AND",

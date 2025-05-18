@@ -11,11 +11,13 @@ from .ast import (
     With,
     WithPart,
     From,
+    Insert,
     NameExpression,
     EqualExpression,
     GroupBy,
     FloatExpression,
     FalseExpression,
+    DefaultExpression,
     NullExpression,
     IsExpression,
     TrueExpression,
@@ -535,6 +537,112 @@ def parse_select(tokens: List[Token]) -> Tuple[Select, List[Token]]:
     ), tokens
 
 
+def parse_insert(tokens: List[Token]) -> Tuple[Ast, List[Token]]:
+    if (
+        not tokens
+        or tokens[0].type != "keyword"
+        or tokens[0].value.upper() != "INSERT INTO"
+    ):
+        raise ValueError("Expected INSERT INTO statement")
+
+    tokens = tokens[1:]
+    table = tokens[0]
+    assert table.type == "name", f"Expected table name, got {table}"
+    tokens = tokens[1:]
+
+    if not tokens:
+        raise ValueError("Expected VALUES or DEFAULT VALUES after INSERT INTO")
+
+    if tokens[0].type == "keyword" and tokens[0].value.upper() == "AS":
+        tokens = tokens[1:]
+        alias_token = tokens[0]
+        assert alias_token.type == "name", f"Expected alias name, got {alias_token}"
+        alias_name = alias_token.value
+        tokens = tokens[1:]
+    else:
+        alias_name = None
+
+    if tokens[0].type == "paren_left":
+        tokens = tokens[1:]
+        columns: List[str] = []
+        while True:
+            if tokens[0].type == "paren_right":
+                tokens = tokens[1:]
+                break
+            elif tokens[0].type == "comma":
+                tokens = tokens[1:]
+            else:
+                column = tokens[0]
+                assert column.type == "name", f"Expected column name, got {column}"
+                columns.append(column.value)
+                tokens = tokens[1:]
+        if not columns:
+            raise ValueError("Expected column names after INSERT INTO")
+    else:
+        columns = None
+
+    if tokens[0].type == "keyword" and tokens[0].value.upper() == "VALUES":
+        tokens = tokens[1:]
+        rows: List[List[Expression]] = []
+        while True:
+            if tokens[0].type == "paren_left":
+                tokens = tokens[1:]
+                value_expressions: List[Expression] = []
+                while True:
+                    if tokens[0].type == "paren_right":
+                        tokens = tokens[1:]
+                        break
+                    elif tokens[0].type == "comma":
+                        tokens = tokens[1:]
+                    elif (
+                        tokens[0].type == "keyword"
+                        and tokens[0].value.upper() == "DEFAULT"
+                    ):
+                        tokens = tokens[1:]
+                        value_expressions.append(DefaultExpression())
+                    else:
+                        exp, tokens = parse_expression(tokens)
+                        value_expressions.append(exp)
+                rows.append(value_expressions)
+            elif tokens[0].type == "keyword" and tokens[0].value.upper() in [
+                "SELECT",
+                "WITH",
+                "INSERT",
+                "UPDATE",
+                "DELETE",
+            ]:
+                subquery, tokens = parse_command(tokens)
+                rows.append(subquery)
+            elif tokens[0].type == "comma":
+                tokens = tokens[1:]
+            else:
+                break
+        if not rows:
+            raise ValueError("Expected VALUES after INSERT INTO")
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() == "DEFAULT VALUES":
+        tokens = tokens[1:]
+        rows = None
+    else:
+        raise ValueError("Expected VALUES or DEFAULT VALUES after INSERT INTO")
+
+    if (
+        tokens
+        and tokens[0].type == "keyword"
+        and tokens[0].value.upper() == "RETURNING"
+    ):
+        tokens = tokens[1:]
+        returning_fields, tokens = parse_fields(tokens)
+    else:
+        returning_fields = None
+    return Insert(
+        table=table.value,
+        table_alias=alias_name,
+        columns=columns,
+        values=rows,
+        returning_fields=returning_fields,
+    ), tokens
+
+
 def parse_with(tokens: List[Token]) -> Tuple[Optional[Ast], List[Token]]:
     if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "WITH":
         return None, tokens
@@ -572,6 +680,8 @@ def parse_command(tokens: List[Token]) -> Tuple[Union[With, Select], List[Token]
         return parse_with(tokens)
     elif tokens[0].type == "keyword" and tokens[0].value.upper() == "SELECT":
         return parse_select(tokens)
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() == "INSERT INTO":
+        return parse_insert(tokens)
     else:
         raise ValueError(
             f"Expected WITH or SELECT statement, got {tokens[0].type}: {tokens[0].value}"
