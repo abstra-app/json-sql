@@ -650,12 +650,9 @@ def parse_insert(tokens: List[Token]) -> Tuple[Ast, List[Token]]:
         returning_fields=returning_fields,
     ), tokens
 
+
 def parse_update(tokens: List[Token]) -> Tuple[Ast, List[Token]]:
-    if (
-        not tokens
-        or tokens[0].type != "keyword"
-        or tokens[0].value.upper() != "UPDATE"
-    ):
+    if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "UPDATE":
         raise ValueError("Expected UPDATE statement")
     tokens = tokens[1:]
 
@@ -669,8 +666,10 @@ def parse_update(tokens: List[Token]) -> Tuple[Ast, List[Token]]:
         tokens = tokens[2:]
     else:
         table_alias = None
-    
-    assert tokens[0].type == "keyword" and tokens[0].value.upper() == "SET", f"Expecting SET assignments, got '{tokens[0].value}'"
+
+    assert (
+        tokens[0].type == "keyword" and tokens[0].value.upper() == "SET"
+    ), f"Expecting SET assignments, got '{tokens[0].value}'"
     tokens = tokens[1:]
 
     changes = []
@@ -685,7 +684,7 @@ def parse_update(tokens: List[Token]) -> Tuple[Ast, List[Token]]:
         exp, tokens = parse_expression(tokens)
         changes.append((col_name, exp))
 
-        if tokens[0].type == "comma":
+        if len(tokens) > 0 and tokens[0].type == "comma":
             tokens = tokens[1:]
             continue
         else:
@@ -693,7 +692,11 @@ def parse_update(tokens: List[Token]) -> Tuple[Ast, List[Token]]:
 
     where, tokens = parse_where(tokens)
 
-    if len(tokens) > 0 and tokens[0].type == "keyword" and tokens[0].value.upper() == "RETURNING":
+    if (
+        len(tokens) > 0
+        and tokens[0].type == "keyword"
+        and tokens[0].value.upper() == "RETURNING"
+    ):
         fields, tokens = parse_fields(tokens)
     else:
         fields = None
@@ -703,10 +706,8 @@ def parse_update(tokens: List[Token]) -> Tuple[Ast, List[Token]]:
         table_alias=table_alias,
         changes=changes,
         where=where,
-        returning_fields=fields
+        returning_fields=fields,
     ), tokens
-
-
 
 
 def parse_with(tokens: List[Token]) -> Tuple[Optional[Ast], List[Token]]:

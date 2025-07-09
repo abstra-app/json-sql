@@ -881,8 +881,8 @@ class TestEvalSQL(TestCase):
                 Table(
                     name="foo",
                     columns=[
-                        Column(name="a", type="string"),
-                        Column(name="b", type="string"),
+                        Column(name="a", type="int"),
+                        Column(name="b", type="int"),
                     ],
                     data=[{"a": 1, "b": 2}, {"a": 3, "b": 4}],
                 )
@@ -896,7 +896,51 @@ class TestEvalSQL(TestCase):
             tables.get_table("foo").data, [{"a": 1, "b": 0}, {"a": 3, "b": 4}]
         )
 
-    def test_complete(self):
+    def test_update_expression_set(self):
+        code = "update foo set a = b + 1"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="foo",
+                    columns=[
+                        Column(name="a", type="int"),
+                        Column(name="b", type="int"),
+                    ],
+                    data=[{"a": 1, "b": 2}, {"a": 3, "b": 4}],
+                )
+            ]
+        )
+
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertIsNone(result)
+        self.assertEqual(
+            tables.get_table("foo").data, [{"a": 3, "b": 2}, {"a": 5, "b": 4}]
+        )
+
+    def test_update_expression_where(self):
+        code = "update foo set a = 0 where a > b"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="foo",
+                    columns=[
+                        Column(name="a", type="int"),
+                        Column(name="b", type="int"),
+                    ],
+                    data=[{"a": 10, "b": 2}, {"a": 3, "b": 4}],
+                )
+            ]
+        )
+
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertIsNone(result)
+        self.assertEqual(
+            tables.get_table("foo").data, [{"a": 0, "b": 2}, {"a": 3, "b": 4}]
+        )
+
+    def test_select_complete(self):
         code = "\n".join(
             [
                 "select foo, count(*)",

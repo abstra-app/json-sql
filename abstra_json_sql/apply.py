@@ -688,18 +688,22 @@ def apply_insert(insert: Insert, tables: ITablesSnapshot, ctx: dict):
     else:
         return None
 
+
 def apply_update(update: Update, tables: ITablesSnapshot, ctx: dict):
     returning_values = []
     table = tables.get_table(update.table_name)
 
-    selected_idx = [
-        idx for idx, row in enumerate(table.data) if apply_expression(update.where.expression, {**ctx, **row}) is True
+    selected = [
+        (idx, row)
+        for idx, row in enumerate(table.data)
+        if update.where is None
+        or apply_expression(update.where.expression, {**ctx, **row}) is True
     ]
-    for idx in selected_idx:
+    for idx, row in selected:
         change = {
             col: apply_expression(
                 exp,
-                ctx,
+                {**ctx, **row},
             )
             for col, exp in update.changes
             if not isinstance(exp, DefaultExpression)
@@ -711,6 +715,7 @@ def apply_update(update: Update, tables: ITablesSnapshot, ctx: dict):
         return returning_values
     else:
         return None
+
 
 def apply_with(with_clause: With, tables: ITablesSnapshot, ctx: dict):
     extra_tables: List[Table] = []
