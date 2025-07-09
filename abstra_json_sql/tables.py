@@ -87,7 +87,7 @@ class InMemoryTables(BaseModel, ITablesSnapshot):
         table_obj.data = [row for i, row in enumerate(table_obj.data) if i not in idxs]
 
 
-class FileSystemTables(ITablesSnapshot):
+class FileSystemJsonTables(ITablesSnapshot):
     workdir: Path
 
     def __init__(self, workdir: Path):
@@ -144,6 +144,63 @@ class FileSystemTables(ITablesSnapshot):
                 raise IndexError(f"Index {idx} out of range for table {table_name}")
             del rows[idx]
         table_path.write_text(json.dumps(rows))
+
+
+class FileSystemJsonLTables(ITablesSnapshot):
+    workdir: Path
+
+    def __init__(self, workdir: Path):
+        self.workdir = workdir
+
+    def get_table(self, name: str) -> Optional[Table]:
+        table_path = self.workdir / f"{name}.jsonl"
+        if not table_path.exists():
+            raise FileNotFoundError(f"File {table_path} does not exist")
+        columns = set()
+        data = []
+        with table_path.open("r") as f:
+            for line in f:
+                row = json.loads(line.strip())
+                assert isinstance(row, dict), f"Row {row} is not a dictionary"
+                data.append(row)
+                for key, value in row.items():
+                    if key not in columns:
+                        col = Column(name=key, type=type(value).__name__)
+                        columns.add(col)
+        return Table(name=name, columns=list(columns), data=data)
+
+    def insert(self, table_name: str, row: dict):
+        table_path = self.workdir / f"{table_name}.jsonl"
+        with table_path.open("a") as f:
+            f.write(json.dumps(row) + "\n")
+
+    def update(self, table_name: str, idx: int, changes: dict):
+        table_path = self.workdir / f"{table_name}.jsonl"
+        if not table_path.exists():
+            raise FileNotFoundError(f"File {table_path} does not exist")
+        rows = []
+        with table_path.open("r") as f:
+            for i, line in enumerate(f):
+                row = json.loads(line.strip())
+                if i == idx:
+                    row.update(changes)
+                rows.append(row)
+        with table_path.open("w") as f:
+            for row in rows:
+                f.write(json.dumps(row) + "\n")
+
+    def delete(self, table_name: str, idxs: List[int]):
+        table_path = self.workdir / f"{table_name}.jsonl"
+        if not table_path.exists():
+            raise FileNotFoundError(f"File {table_path} does not exist")
+        rows = []
+        with table_path.open("r") as f:
+            for i, line in enumerate(f):
+                if i not in idxs:
+                    rows.append(json.loads(line.strip()))
+        with table_path.open("w") as f:
+            for row in rows:
+                f.write(json.dumps(row) + "\n")
 
 
 class ExtendedTables(ITablesSnapshot):
