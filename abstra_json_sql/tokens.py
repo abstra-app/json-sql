@@ -19,6 +19,8 @@ operators = [
 keywords = [
     "WITH",
     "SELECT",
+    "SET",
+    "UPDATE",
     "INSERT INTO",
     "VALUES",
     "DEFAULT VALUES",

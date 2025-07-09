@@ -692,20 +692,20 @@ def apply_update(update: Update, tables: ITablesSnapshot, ctx: dict):
     returning_values = []
     table = tables.get_table(update.table_name)
 
-    for col_name, exp in update.changes:
-        new_row = default_row(table, ctx)
-        new_row.update(
-            {
-                col: apply_expression(
-                    exp,
-                    ctx,
-                )
-                for col, exp in update.changes
-                if not isinstance(exp, DefaultExpression)
-            }
-        )
-        tables.insert(update.table_name, new_row)
-        returning_values.append(new_row)
+    selected_idx = [
+        idx for idx, row in enumerate(table.data) if apply_expression(update.where.expression, {**ctx, **row}) is True
+    ]
+    for idx in selected_idx:
+        change = {
+            col: apply_expression(
+                exp,
+                ctx,
+            )
+            for col, exp in update.changes
+            if not isinstance(exp, DefaultExpression)
+        }
+        tables.update(update.table_name, idx, change)
+    returning_values.append(table.data[idx])
 
     if update.returning_fields:
         return returning_values

@@ -7,6 +7,7 @@ from .ast import (
     Limit,
     IntExpression,
     Wildcard,
+    Update,
     FunctionCallExpression,
     With,
     WithPart,
@@ -649,6 +650,64 @@ def parse_insert(tokens: List[Token]) -> Tuple[Ast, List[Token]]:
         returning_fields=returning_fields,
     ), tokens
 
+def parse_update(tokens: List[Token]) -> Tuple[Ast, List[Token]]:
+    if (
+        not tokens
+        or tokens[0].type != "keyword"
+        or tokens[0].value.upper() != "UPDATE"
+    ):
+        raise ValueError("Expected UPDATE statement")
+    tokens = tokens[1:]
+
+    table_token = tokens[0]
+    assert table_token.type == "name"
+    tokens = tokens[1:]
+
+    if tokens[0].type == "keyword" and tokens[0].value.upper() == "AS":
+        assert tokens[1].type == "name", "Expecting table alias"
+        table_alias = tokens[1].value
+        tokens = tokens[2:]
+    else:
+        table_alias = None
+    
+    assert tokens[0].type == "keyword" and tokens[0].value.upper() == "SET", f"Expecting SET assignments, got '{tokens[0].value}'"
+    tokens = tokens[1:]
+
+    changes = []
+    while True:
+        assert tokens[0].type == "name", "Expecting a name"
+        col_name = tokens[0].value
+        tokens = tokens[1:]
+
+        assert tokens[0].type == "operator" and tokens[0].value == "="
+        tokens = tokens[1:]
+
+        exp, tokens = parse_expression(tokens)
+        changes.append((col_name, exp))
+
+        if tokens[0].type == "comma":
+            tokens = tokens[1:]
+            continue
+        else:
+            break
+
+    where, tokens = parse_where(tokens)
+
+    if len(tokens) > 0 and tokens[0].type == "keyword" and tokens[0].value.upper() == "RETURNING":
+        fields, tokens = parse_fields(tokens)
+    else:
+        fields = None
+
+    return Update(
+        table_name=table_token.value,
+        table_alias=table_alias,
+        changes=changes,
+        where=where,
+        returning_fields=fields
+    ), tokens
+
+
+
 
 def parse_with(tokens: List[Token]) -> Tuple[Optional[Ast], List[Token]]:
     if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "WITH":
@@ -689,6 +748,8 @@ def parse_command(tokens: List[Token]) -> Tuple[Union[With, Select], List[Token]
         return parse_select(tokens)
     elif tokens[0].type == "keyword" and tokens[0].value.upper() == "INSERT INTO":
         return parse_insert(tokens)
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() == "UPDATE":
+        return parse_update(tokens)
     else:
         raise ValueError(
             f"Expected WITH or SELECT statement, got {tokens[0].type}: {tokens[0].value}"

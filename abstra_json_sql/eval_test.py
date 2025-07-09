@@ -874,6 +874,28 @@ class TestEvalSQL(TestCase):
             ],
         )
 
+    def test_update(self):
+        code = "update foo set b = 0 where a = 1"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="foo",
+                    columns=[
+                        Column(name="a", type="string"),
+                        Column(name="b", type="string"),
+                    ],
+                    data=[{"a": 1, "b": 2}, {"a": 3, "b": 4}],
+                )
+            ]
+        )
+
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertIsNone(result)
+        self.assertEqual(
+            tables.get_table("foo").data, [{"a": 1, "b": 0}, {"a": 3, "b": 4}]
+        )
+
     def test_complete(self):
         code = "\n".join(
             [

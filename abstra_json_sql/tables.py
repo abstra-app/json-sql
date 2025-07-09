@@ -49,8 +49,12 @@ class ITablesSnapshot(ABC):
         raise NotImplementedError("get_table method must be implemented")
 
     @abstractmethod
-    def insert(table_name: str, row: dict):
+    def insert(self, table_name: str, row: dict):
         raise NotImplementedError("insert method must be implemented")
+    
+    @abstractmethod
+    def update(self, table_name: str, idx: int, changes: dict):
+        raise NotImplementedError("update method must be implemented")
 
 
 class InMemoryTables(BaseModel, ITablesSnapshot):
@@ -67,6 +71,11 @@ class InMemoryTables(BaseModel, ITablesSnapshot):
         if table_obj is None:
             raise ValueError(f"Table {table} not found")
         table_obj.data.append(row)
+    
+    def update(self, table: str, idx: int, changes: dict):
+        table_obj = self.get_table(table)
+        table_obj.data[idx].update(changes)
+
 
 
 class FileSystemTables(ITablesSnapshot):
@@ -130,3 +139,10 @@ class ExtendedTables(ITablesSnapshot):
                 table.data.append(row)
                 return
         self.snapshot.insert(table_name, row)
+
+    def update(self, table_name, idx, changes):
+        for table in self.extra_tables:
+            if table.name == table_name:
+                table.data[idx].update(changes)
+                return
+        self.snapshot.update(table_name, idx, changes)
