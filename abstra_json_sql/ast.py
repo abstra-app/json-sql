@@ -1,4 +1,4 @@
-from typing import List, Optional, Literal, Union
+from typing import List, Optional, Literal, Union, Tuple
 from dataclasses import dataclass
 from abc import ABC
 
@@ -236,7 +236,12 @@ class Insert(Command):
 
 
 @dataclass
-class Update(Command): ...
+class Update(Command):
+    table_name: str
+    changes: List[Tuple[str, Expression]]
+    table_alias: Optional[str] = None
+    returning_fields: Optional[List[SelectField]] = None
+    where: Optional[Where] = None
 
 
 @dataclass

@@ -6,6 +6,7 @@ from .tables import ITablesSnapshot, Table, ExtendedTables, Column
 from .field_name import field_name, expression_name
 from .ast import (
     Expression,
+    Update,
     StringExpression,
     IntExpression,
     Select,
@@ -687,6 +688,29 @@ def apply_insert(insert: Insert, tables: ITablesSnapshot, ctx: dict):
     else:
         return None
 
+def apply_update(update: Update, tables: ITablesSnapshot, ctx: dict):
+    returning_values = []
+    table = tables.get_table(update.table_name)
+
+    for col_name, exp in update.changes:
+        new_row = default_row(table, ctx)
+        new_row.update(
+            {
+                col: apply_expression(
+                    exp,
+                    ctx,
+                )
+                for col, exp in update.changes
+                if not isinstance(exp, DefaultExpression)
+            }
+        )
+        tables.insert(update.table_name, new_row)
+        returning_values.append(new_row)
+
+    if update.returning_fields:
+        return returning_values
+    else:
+        return None
 
 def apply_with(with_clause: With, tables: ITablesSnapshot, ctx: dict):
     extra_tables: List[Table] = []
@@ -716,5 +740,7 @@ def apply_command(command: Command, tables: ITablesSnapshot, ctx: dict):
         return apply_with(command, tables, ctx)
     elif isinstance(command, Insert):
         return apply_insert(command, tables, ctx)
+    elif isinstance(command, Update):
+        return apply_update(command, tables, ctx)
     else:
         raise ValueError(f"Unsupported command type: {type(command)}")
