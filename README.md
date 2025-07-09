@@ -107,8 +107,8 @@ print(result) # [{"foo": 3, "count": 2}]
     - [x] `DEFAULT`
     - [ ] `SELECT`
     - [x] `RETURNING`
-- [ ] `UPDATE`
-- [ ] `DELETE`
+- [x] `UPDATE`
+- [x] `DELETE`
 
 - [ ] `CREATE`
 - [ ] `DROP`
