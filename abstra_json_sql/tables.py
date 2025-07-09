@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 from pydantic import BaseModel
 from pathlib import Path
 from abc import ABC, abstractmethod
@@ -13,6 +13,20 @@ class ColumnType(Enum):
     bool = "bool"
     null = "null"
     unknown = "unknown"
+
+    def from_value(value: Any) -> "ColumnType":
+        if isinstance(value, int):
+            return ColumnType.int
+        elif isinstance(value, str):
+            return ColumnType.string
+        elif isinstance(value, float):
+            return ColumnType.float
+        elif isinstance(value, bool):
+            return ColumnType.bool
+        elif value is None:
+            return ColumnType.null
+        else:
+            return ColumnType.unknown
 
 
 class ForeignKey(BaseModel):
@@ -103,7 +117,7 @@ class FileSystemJsonTables(ITablesSnapshot):
             assert isinstance(row, dict), f"Row {row} is not a dictionary"
             for key, value in row.items():
                 if key not in columns:
-                    col = Column(name=key, type=type(value).__name__)
+                    col = Column(name=key, type=ColumnType.from_value(value))
                     columns.add(col)
         return Table(name=name, columns=list(columns), data=rows)
 
@@ -165,7 +179,7 @@ class FileSystemJsonLTables(ITablesSnapshot):
                 data.append(row)
                 for key, value in row.items():
                     if key not in columns:
-                        col = Column(name=key, type=type(value).__name__)
+                        col = Column(name=key, type=ColumnType.from_value(value))
                         columns.add(col)
         return Table(name=name, columns=list(columns), data=data)
 
