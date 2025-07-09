@@ -3,6 +3,7 @@ from typing import List, Tuple, Optional, Union
 from .ast import (
     Ast,
     Select,
+    Delete,
     SelectField,
     Limit,
     IntExpression,
@@ -710,6 +711,37 @@ def parse_update(tokens: List[Token]) -> Tuple[Ast, List[Token]]:
     ), tokens
 
 
+def parse_delete(tokens: List[Token]) -> Tuple[Ast, List[Token]]:
+    if (
+        not tokens
+        or tokens[0].type != "keyword"
+        or tokens[0].value.upper() != "DELETE FROM"
+    ):
+        raise ValueError("Expected DELETE FROM statement")
+    tokens = tokens[1:]
+
+    table_token = tokens[0]
+    assert table_token.type == "name"
+    tokens = tokens[1:]
+
+    where, tokens = parse_where(tokens)
+
+    if (
+        len(tokens) > 0
+        and tokens[0].type == "keyword"
+        and tokens[0].value.upper() == "RETURNING"
+    ):
+        fields, tokens = parse_fields(tokens)
+    else:
+        fields = None
+
+    return Delete(
+        table_name=table_token.value,
+        where=where,
+        returning_fields=fields,
+    ), tokens
+
+
 def parse_with(tokens: List[Token]) -> Tuple[Optional[Ast], List[Token]]:
     if not tokens or tokens[0].type != "keyword" or tokens[0].value.upper() != "WITH":
         return None, tokens
@@ -751,6 +783,8 @@ def parse_command(tokens: List[Token]) -> Tuple[Union[With, Select], List[Token]
         return parse_insert(tokens)
     elif tokens[0].type == "keyword" and tokens[0].value.upper() == "UPDATE":
         return parse_update(tokens)
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() == "DELETE FROM":
+        return parse_delete(tokens)
     else:
         raise ValueError(
             f"Expected WITH or SELECT statement, got {tokens[0].type}: {tokens[0].value}"

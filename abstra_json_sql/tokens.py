@@ -20,6 +20,7 @@ keywords = [
     "WITH",
     "SELECT",
     "SET",
+    "DELETE FROM",
     "UPDATE",
     "INSERT INTO",
     "VALUES",

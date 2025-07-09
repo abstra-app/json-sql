@@ -245,4 +245,8 @@ class Update(Command):
 
 
 @dataclass
-class Delete(Command): ...
+class Delete(Command):
+    table_name: str
+    table_alias: Optional[str] = None
+    returning_fields: Optional[List[SelectField]] = None
+    where: Optional[Where] = None

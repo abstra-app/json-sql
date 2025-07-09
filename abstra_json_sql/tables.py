@@ -56,6 +56,10 @@ class ITablesSnapshot(ABC):
     def update(self, table_name: str, idx: int, changes: dict):
         raise NotImplementedError("update method must be implemented")
 
+    @abstractmethod
+    def delete(self, table_name: str, idxs: List[int]):
+        raise NotImplementedError("delete method must be implemented")
+
 
 class InMemoryTables(BaseModel, ITablesSnapshot):
     tables: List[Table]
@@ -75,6 +79,12 @@ class InMemoryTables(BaseModel, ITablesSnapshot):
     def update(self, table: str, idx: int, changes: dict):
         table_obj = self.get_table(table)
         table_obj.data[idx].update(changes)
+
+    def delete(self, table: str, idxs: List[int]):
+        table_obj = self.get_table(table)
+        if table_obj is None:
+            raise ValueError(f"Table {table} not found")
+        table_obj.data = [row for i, row in enumerate(table_obj.data) if i not in idxs]
 
 
 class FileSystemTables(ITablesSnapshot):
@@ -106,6 +116,33 @@ class FileSystemTables(ITablesSnapshot):
             rows, list
         ), f"File {table_path} does not contain a list of rows"
         rows.append(row)
+        table_path.write_text(json.dumps(rows))
+
+    def update(self, table_name: str, idx: int, changes: dict):
+        table_path = self.workdir / f"{table_name}.json"
+        if not table_path.exists():
+            raise FileNotFoundError(f"File {table_path} does not exist")
+        rows = json.loads(table_path.read_text())
+        assert isinstance(
+            rows, list
+        ), f"File {table_path} does not contain a list of rows"
+        if idx < 0 or idx >= len(rows):
+            raise IndexError(f"Index {idx} out of range for table {table_name}")
+        rows[idx].update(changes)
+        table_path.write_text(json.dumps(rows))
+
+    def delete(self, table_name: str, idxs: List[int]):
+        table_path = self.workdir / f"{table_name}.json"
+        if not table_path.exists():
+            raise FileNotFoundError(f"File {table_path} does not exist")
+        rows = json.loads(table_path.read_text())
+        assert isinstance(
+            rows, list
+        ), f"File {table_path} does not contain a list of rows"
+        for idx in idxs:
+            if idx < 0 or idx >= len(rows):
+                raise IndexError(f"Index {idx} out of range for table {table_name}")
+            del rows[idx]
         table_path.write_text(json.dumps(rows))
 
 
@@ -145,3 +182,9 @@ class ExtendedTables(ITablesSnapshot):
                 table.data[idx].update(changes)
                 return
         self.snapshot.update(table_name, idx, changes)
+
+    def delete(self, table_name: str, idxs: List[int]):
+        for table in self.extra_tables:
+            if table.name == table_name:
+                table.data = [table.data[:idx] + table.data[idx + 1 :] for idx in idxs]
+        self.snapshot.delete(table_name, idxs)

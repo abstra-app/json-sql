@@ -22,6 +22,39 @@ class TestEvalSQL(TestCase):
         result = eval_sql(code=code, tables=tables, ctx=ctx)
         self.assertEqual(result, [{"a": 2}])
 
+    def test_select_complete(self):
+        code = "\n".join(
+            [
+                "select foo, count(*)",
+                "from bar as baz",
+                "where foo is not null",
+                "group by foo",
+                "having foo <> 2",
+                "order by foo",
+                "limit 1 offset 1",
+            ]
+        )
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="bar",
+                    columns=[Column(name="foo", type=ColumnType.string)],
+                    data=[
+                        {"foo": 1},
+                        {"foo": 2},
+                        {"foo": 3},
+                        {"foo": 2},
+                        {"foo": None},
+                        {"foo": 3},
+                        {"foo": 1},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(result, [{"foo": 3, "count": 2}])
+
     def test_lower(self):
         code = "select lower(foo) from bar"
         tables = InMemoryTables(
@@ -940,35 +973,62 @@ class TestEvalSQL(TestCase):
             tables.get_table("foo").data, [{"a": 0, "b": 2}, {"a": 3, "b": 4}]
         )
 
-    def test_select_complete(self):
-        code = "\n".join(
-            [
-                "select foo, count(*)",
-                "from bar as baz",
-                "where foo is not null",
-                "group by foo",
-                "having foo <> 2",
-                "order by foo",
-                "limit 1 offset 1",
-            ]
-        )
+    def test_delete(self):
+        code = "delete from foo where a = 1"
         tables = InMemoryTables(
             tables=[
                 Table(
-                    name="bar",
-                    columns=[Column(name="foo", type=ColumnType.string)],
-                    data=[
-                        {"foo": 1},
-                        {"foo": 2},
-                        {"foo": 3},
-                        {"foo": 2},
-                        {"foo": None},
-                        {"foo": 3},
-                        {"foo": 1},
+                    name="foo",
+                    columns=[
+                        Column(name="a", type="int"),
+                        Column(name="b", type="int"),
                     ],
+                    data=[{"a": 1, "b": 2}, {"a": 3, "b": 4}],
                 )
-            ],
+            ]
         )
+
         ctx = {}
         result = eval_sql(code=code, tables=tables, ctx=ctx)
-        self.assertEqual(result, [{"foo": 3, "count": 2}])
+        self.assertIsNone(result)
+        self.assertEqual(tables.get_table("foo").data, [{"a": 3, "b": 4}])
+
+    def test_delete_expression(self):
+        code = "delete from foo where a > b"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="foo",
+                    columns=[
+                        Column(name="a", type="int"),
+                        Column(name="b", type="int"),
+                    ],
+                    data=[{"a": 10, "b": 2}, {"a": 3, "b": 4}],
+                )
+            ]
+        )
+
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertIsNone(result)
+        self.assertEqual(tables.get_table("foo").data, [{"a": 3, "b": 4}])
+
+    def test_delete_all(self):
+        code = "delete from foo"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="foo",
+                    columns=[
+                        Column(name="a", type="int"),
+                        Column(name="b", type="int"),
+                    ],
+                    data=[{"a": 1, "b": 2}, {"a": 3, "b": 4}],
+                )
+            ]
+        )
+
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertIsNone(result)
+        self.assertEqual(tables.get_table("foo").data, [])

@@ -5,6 +5,7 @@ from .lexer import scan
 from .tables import ITablesSnapshot, Table, ExtendedTables, Column
 from .field_name import field_name, expression_name
 from .ast import (
+    Delete,
     Expression,
     Update,
     StringExpression,
@@ -717,6 +718,25 @@ def apply_update(update: Update, tables: ITablesSnapshot, ctx: dict):
         return None
 
 
+def apply_delete(delete: Delete, tables: ITablesSnapshot, ctx: dict):
+    returning_values = []
+    table = tables.get_table(delete.table_name)
+
+    selected = [
+        (idx, row)
+        for idx, row in enumerate(table.data)
+        if delete.where is None
+        or apply_expression(delete.where.expression, {**ctx, **row}) is True
+    ]
+    tables.delete(delete.table_name, [idx for idx, _ in selected])
+    returning_values.extend([row for _, row in selected])
+
+    if delete.returning_fields:
+        return returning_values
+    else:
+        return None
+
+
 def apply_with(with_clause: With, tables: ITablesSnapshot, ctx: dict):
     extra_tables: List[Table] = []
     for part in with_clause.parts:
@@ -747,5 +767,7 @@ def apply_command(command: Command, tables: ITablesSnapshot, ctx: dict):
         return apply_insert(command, tables, ctx)
     elif isinstance(command, Update):
         return apply_update(command, tables, ctx)
+    elif isinstance(command, Delete):
+        return apply_delete(command, tables, ctx)
     else:
         raise ValueError(f"Unsupported command type: {type(command)}")
