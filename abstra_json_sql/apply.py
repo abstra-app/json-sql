@@ -755,6 +755,7 @@ def apply_with(with_clause: With, tables: ITablesSnapshot, ctx: dict):
         )
         extra_tables.append(extra_table)
 
+    tables = ExtendedTables(tables, extra_tables)
     return apply_command(with_clause.command, tables, ctx)
 
 

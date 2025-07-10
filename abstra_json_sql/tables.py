@@ -53,14 +53,17 @@ class Column:
         is_primary_key: bool = False,
         foreign_key: Optional[ForeignKey] = None,
         default: Optional[Any] = None,
+        column_id: str = None,
     ):
         self.name = name
         self.type = type
         self.is_primary_key = is_primary_key
         self.foreign_key = foreign_key
         self.default = default
+        self.column_id = column_id if column_id is not None else str(uuid.uuid4())
 
     def __hash__(self):
+        # Only hash based on name and type for backward compatibility
         return hash((self.name, self.type, self.is_primary_key, self.foreign_key))
 
     def __eq__(self, other):
@@ -76,6 +79,7 @@ class Column:
     def to_dict(self):
         """Convert column to dictionary for serialization"""
         result = {
+            "id": self.column_id,
             "name": self.name,
             "type": self.type.value if isinstance(self.type, ColumnType) else self.type,
             "is_primary_key": self.is_primary_key,
@@ -92,6 +96,9 @@ class Column:
     def from_dict(cls, data: dict) -> "Column":
         """Create Column object from dictionary"""
         col_dict = data.copy()
+        # Handle legacy format without 'id' field
+        if "id" in col_dict:
+            col_dict["column_id"] = col_dict.pop("id")
         # Convert type string back to ColumnType enum
         if "type" in col_dict:
             col_dict["type"] = ColumnType(col_dict["type"])
@@ -122,6 +129,36 @@ class Table:
             if column.name == name:
                 return column
         return None
+
+    def get_column_by_id(self, column_id: str) -> Optional[Column]:
+        for column in self.columns:
+            if column.column_id == column_id:
+                return column
+        return None
+
+    def convert_row_to_column_ids(self, row: dict) -> dict:
+        """Convert a row from column names to column IDs"""
+        result = {}
+        for col_name, value in row.items():
+            col = self.get_column(col_name)
+            if col:
+                result[col.column_id] = value
+            else:
+                # If column not found, keep original name (for backward compatibility)
+                result[col_name] = value
+        return result
+
+    def convert_row_from_column_ids(self, row: dict) -> dict:
+        """Convert a row from column IDs to column names"""
+        result = {}
+        for col_id, value in row.items():
+            col = self.get_column_by_id(col_id)
+            if col:
+                result[col.name] = value
+            else:
+                # If column not found by ID, try to treat it as name (for backward compatibility)
+                result[col_id] = value
+        return result
 
 
 class ITablesSnapshot(ABC):
@@ -187,18 +224,48 @@ class InMemoryTables(ITablesSnapshot):
                             columns.append(Column.from_dict(col_data))
                         else:
                             columns.append(col_data)
-                    self.tables.append(
-                        Table(
-                            name=table["name"],
-                            columns=columns,
-                            data=table.get("data", []),
-                            table_id=table.get("table_id"),
-                        )
+
+                    new_table = Table(
+                        name=table["name"],
+                        columns=columns,
+                        data=[],  # Start with empty data
+                        table_id=table.get("table_id"),
                     )
+
+                    # Convert data to column ID format
+                    for row in table.get("data", []):
+                        converted_row = new_table.convert_row_to_column_ids(row)
+                        new_table.data.append(converted_row)
+
+                    self.tables.append(new_table)
                 else:
+                    # Convert existing table data to column ID format if needed
+                    converted_data = []
+                    for row in table.data:
+                        converted_row = table.convert_row_to_column_ids(row)
+                        converted_data.append(converted_row)
+                    table.data = converted_data
                     self.tables.append(table)
 
     def get_table(self, name: str) -> Optional[Table]:
+        for table in self.tables:
+            if table.name == name:
+                # Create a copy with data converted to column names
+                converted_data = []
+                for row in table.data:
+                    converted_data.append(table.convert_row_from_column_ids(row))
+
+                result_table = Table(
+                    name=table.name,
+                    columns=table.columns,
+                    data=converted_data,
+                    table_id=table.table_id,
+                )
+                return result_table
+        return None
+
+    def _get_internal_table(self, name: str) -> Optional[Table]:
+        """Get the internal table object (with column ID data format)"""
         for table in self.tables:
             if table.name == name:
                 return table
@@ -213,15 +280,15 @@ class InMemoryTables(ITablesSnapshot):
         self.tables = [table for table in self.tables if table.name != name]
 
     def rename_table(self, old_name: str, new_name: str):
-        table = self.get_table(old_name)
+        table = self._get_internal_table(old_name)
         if table is None:
             raise ValueError(f"Table {old_name} not found")
-        if self.get_table(new_name) is not None:
+        if self._get_internal_table(new_name) is not None:
             raise ValueError(f"Table {new_name} already exists")
         table.name = new_name
 
     def add_column(self, table_name: str, column: Column):
-        table = self.get_table(table_name)
+        table = self._get_internal_table(table_name)
         if table is None:
             raise ValueError(f"Table {table_name} not found")
         if table.get_column(column.name) is not None:
@@ -229,15 +296,24 @@ class InMemoryTables(ITablesSnapshot):
                 f"Column {column.name} already exists in table {table_name}"
             )
         table.columns.append(column)
+        # Add default value to existing rows using column ID
+        for row in table.data:
+            row[column.column_id] = column.default
 
     def remove_column(self, table_name: str, column_name: str):
-        table = self.get_table(table_name)
+        table = self._get_internal_table(table_name)
         if table is None:
             raise ValueError(f"Table {table_name} not found")
+        # Find the column to get its ID before removing
+        column_to_remove = table.get_column(column_name)
+        if column_to_remove:
+            # Remove from data using column ID
+            for row in table.data:
+                row.pop(column_to_remove.column_id, None)
         table.columns = [col for col in table.columns if col.name != column_name]
 
     def rename_column(self, table_name: str, old_name: str, new_name: str):
-        table = self.get_table(table_name)
+        table = self._get_internal_table(table_name)
         if table is None:
             raise ValueError(f"Table {table_name} not found")
         column = table.get_column(old_name)
@@ -248,7 +324,7 @@ class InMemoryTables(ITablesSnapshot):
     def change_column_type(
         self, table_name: str, column_name: str, new_type: ColumnType
     ):
-        table = self.get_table(table_name)
+        table = self._get_internal_table(table_name)
         if table is None:
             raise ValueError(f"Table {table_name} not found")
         column = table.get_column(column_name)
@@ -257,17 +333,21 @@ class InMemoryTables(ITablesSnapshot):
         column.type = new_type
 
     def insert(self, table: str, row: dict):
-        table_obj = self.get_table(table)
+        table_obj = self._get_internal_table(table)
         if table_obj is None:
             raise ValueError(f"Table {table} not found")
-        table_obj.data.append(row)
+        # Convert row from column names to column IDs
+        row_with_ids = table_obj.convert_row_to_column_ids(row)
+        table_obj.data.append(row_with_ids)
 
     def update(self, table: str, idx: int, changes: dict):
-        table_obj = self.get_table(table)
-        table_obj.data[idx].update(changes)
+        table_obj = self._get_internal_table(table)
+        # Convert changes from column names to column IDs
+        changes_with_ids = table_obj.convert_row_to_column_ids(changes)
+        table_obj.data[idx].update(changes_with_ids)
 
     def delete(self, table: str, idxs: List[int]):
-        table_obj = self.get_table(table)
+        table_obj = self._get_internal_table(table)
         if table_obj is None:
             raise ValueError(f"Table {table} not found")
         table_obj.data = [row for i, row in enumerate(table_obj.data) if i not in idxs]
@@ -364,7 +444,16 @@ class FileSystemJsonTables(ITablesSnapshot):
             # Save inferred metadata
             self._save_table_metadata(table_id, name, columns)
 
-        return Table(name=name, columns=columns, data=rows, table_id=table_id)
+        # Create table object for conversion purposes
+        temp_table = Table(name=name, columns=columns, data=[], table_id=table_id)
+
+        # Convert data from column IDs to column names
+        converted_data = []
+        for row in rows:
+            converted_row = temp_table.convert_row_from_column_ids(row)
+            converted_data.append(converted_row)
+
+        return Table(name=name, columns=columns, data=converted_data, table_id=table_id)
 
     def add_table(self, table: Table):
         # Check if table name already exists
@@ -376,7 +465,13 @@ class FileSystemJsonTables(ITablesSnapshot):
         if table_path.exists():
             raise ValueError(f"Table with ID {table.table_id} already exists")
 
-        table_path.write_text(json.dumps(table.data, indent=2))
+        # Convert data to column ID format before saving
+        data_with_ids = []
+        for row in table.data:
+            row_with_ids = table.convert_row_to_column_ids(row)
+            data_with_ids.append(row_with_ids)
+
+        table_path.write_text(json.dumps(data_with_ids, indent=2))
         # Save columns metadata
         self._save_table_metadata(table.table_id, table.name, table.columns)
 
@@ -406,7 +501,7 @@ class FileSystemJsonTables(ITablesSnapshot):
         self._save_table_metadata(table_id, new_name, columns)
 
     def insert(self, table_name: str, row: dict):
-        table_id, _ = self._get_table_metadata_by_name(table_name)
+        table_id, columns = self._get_table_metadata_by_name(table_name)
         if table_id is None:
             raise ValueError(f"Table {table_name} not found")
 
@@ -414,11 +509,17 @@ class FileSystemJsonTables(ITablesSnapshot):
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
 
+        # Create temp table for conversion
+        temp_table = Table(name=table_name, columns=columns, data=[], table_id=table_id)
+
         rows = json.loads(table_path.read_text())
         assert isinstance(
             rows, list
         ), f"File {table_path} does not contain a list of rows"
-        rows.append(row)
+
+        # Convert row to column ID format
+        row_with_ids = temp_table.convert_row_to_column_ids(row)
+        rows.append(row_with_ids)
         table_path.write_text(json.dumps(rows, indent=2))
 
     def add_column(self, table_name: str, column: Column):
@@ -441,9 +542,9 @@ class FileSystemJsonTables(ITablesSnapshot):
                 f"Column {column.name} already exists in table {table_name}"
             )
 
-        # Add column to data
+        # Add column to data using column ID
         for row in rows:
-            row[column.name] = column.default
+            row[column.column_id] = column.default
         table_path.write_text(json.dumps(rows, indent=2))
 
         # Update metadata
@@ -464,10 +565,17 @@ class FileSystemJsonTables(ITablesSnapshot):
             rows, list
         ), f"File {table_path} does not contain a list of rows"
 
-        # Remove column from data
-        for row in rows:
-            if column_name in row:
-                del row[column_name]
+        # Remove column from data using column ID
+        column_to_remove = None
+        for col in columns:
+            if col.name == column_name:
+                column_to_remove = col
+                break
+
+        if column_to_remove:
+            for row in rows:
+                if column_to_remove.column_id in row:
+                    del row[column_to_remove.column_id]
         table_path.write_text(json.dumps(rows, indent=2))
 
         # Update metadata
@@ -488,13 +596,8 @@ class FileSystemJsonTables(ITablesSnapshot):
             rows, list
         ), f"File {table_path} does not contain a list of rows"
 
-        # Rename column in data
-        for row in rows:
-            if old_name in row:
-                row[new_name] = row.pop(old_name)
-        table_path.write_text(json.dumps(rows, indent=2))
-
-        # Update metadata
+        # Data doesn't need to change for rename_column since we use column IDs
+        # Only metadata needs to be updated
         for col in columns:
             if col.name == old_name:
                 col.name = new_name
@@ -517,7 +620,7 @@ class FileSystemJsonTables(ITablesSnapshot):
         self._save_table_metadata(table_id, table_name, columns)
 
     def update(self, table_name: str, idx: int, changes: dict):
-        table_id, _ = self._get_table_metadata_by_name(table_name)
+        table_id, columns = self._get_table_metadata_by_name(table_name)
         if table_id is None:
             raise ValueError(f"Table {table_name} not found")
 
@@ -525,13 +628,19 @@ class FileSystemJsonTables(ITablesSnapshot):
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
 
+        # Create temp table for conversion
+        temp_table = Table(name=table_name, columns=columns, data=[], table_id=table_id)
+
         rows = json.loads(table_path.read_text())
         assert isinstance(
             rows, list
         ), f"File {table_path} does not contain a list of rows"
         if idx < 0 or idx >= len(rows):
             raise IndexError(f"Index {idx} out of range for table {table_name}")
-        rows[idx].update(changes)
+
+        # Convert changes to column ID format
+        changes_with_ids = temp_table.convert_row_to_column_ids(changes)
+        rows[idx].update(changes_with_ids)
         table_path.write_text(json.dumps(rows, indent=2))
 
     def delete(self, table_name: str, idxs: List[int]):
@@ -695,7 +804,16 @@ class FileSystemJsonLTables(ITablesSnapshot):
             # Save inferred metadata
             self._save_table_metadata(table_id, name, columns)
 
-        return Table(name=name, columns=columns, data=data, table_id=table_id)
+        # Create table object for conversion purposes
+        temp_table = Table(name=name, columns=columns, data=[], table_id=table_id)
+
+        # Convert data from column IDs to column names
+        converted_data = []
+        for row in data:
+            converted_row = temp_table.convert_row_from_column_ids(row)
+            converted_data.append(converted_row)
+
+        return Table(name=name, columns=columns, data=converted_data, table_id=table_id)
 
     def add_table(self, table: Table):
         # Check if table name already exists
@@ -709,7 +827,9 @@ class FileSystemJsonLTables(ITablesSnapshot):
 
         with table_path.open("w") as f:
             for row in table.data:
-                f.write(json.dumps(row) + "\n")
+                # Convert row to column ID format before saving
+                row_with_ids = table.convert_row_to_column_ids(row)
+                f.write(json.dumps(row_with_ids) + "\n")
         # Save columns metadata
         self._save_table_metadata(table.table_id, table.name, table.columns)
 
@@ -753,13 +873,13 @@ class FileSystemJsonLTables(ITablesSnapshot):
                 f"Column {column.name} already exists in table {table_name}"
             )
 
-        # Add column to data
+        # Add column to data using column ID
         rows = []
         with table_path.open("r") as f:
             for line in f:
                 if line.strip():
                     row = json.loads(line.strip())
-                    row[column.name] = column.default
+                    row[column.column_id] = column.default
                     rows.append(row)
 
         with table_path.open("w") as f:
@@ -779,13 +899,20 @@ class FileSystemJsonLTables(ITablesSnapshot):
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
 
-        # Remove column from data
+        # Remove column from data using column ID
+        column_to_remove = None
+        for col in columns:
+            if col.name == column_name:
+                column_to_remove = col
+                break
+
         rows = []
         with table_path.open("r") as f:
             for line in f:
                 if line.strip():
                     row = json.loads(line.strip())
-                    row.pop(column_name, None)
+                    if column_to_remove:
+                        row.pop(column_to_remove.column_id, None)
                     rows.append(row)
 
         with table_path.open("w") as f:
@@ -805,21 +932,8 @@ class FileSystemJsonLTables(ITablesSnapshot):
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
 
-        # Rename column in data
-        rows = []
-        with table_path.open("r") as f:
-            for line in f:
-                if line.strip():
-                    row = json.loads(line.strip())
-                    if old_name in row:
-                        row[new_name] = row.pop(old_name)
-                    rows.append(row)
-
-        with table_path.open("w") as f:
-            for row in rows:
-                f.write(json.dumps(row) + "\n")
-
-        # Update metadata
+        # Data doesn't need to change for rename_column since we use column IDs
+        # Only metadata needs to be updated
         for col in columns:
             if col.name == old_name:
                 col.name = new_name
@@ -842,18 +956,26 @@ class FileSystemJsonLTables(ITablesSnapshot):
         self._save_table_metadata(table_id, table_name, columns)
 
     def insert(self, table_name: str, row: dict):
-        table_id, _ = self._get_table_metadata_by_name(table_name)
+        table_id, columns = self._get_table_metadata_by_name(table_name)
         if table_id is None:
             raise ValueError(f"Table {table_name} not found")
+
+        # Create temp table for conversion
+        temp_table = Table(name=table_name, columns=columns, data=[], table_id=table_id)
 
         table_path = self.workdir / f"{table_id}.jsonl"
         with table_path.open("a") as f:
-            f.write(json.dumps(row) + "\n")
+            # Convert row to column ID format
+            row_with_ids = temp_table.convert_row_to_column_ids(row)
+            f.write(json.dumps(row_with_ids) + "\n")
 
     def update(self, table_name: str, idx: int, changes: dict):
-        table_id, _ = self._get_table_metadata_by_name(table_name)
+        table_id, columns = self._get_table_metadata_by_name(table_name)
         if table_id is None:
             raise ValueError(f"Table {table_name} not found")
+
+        # Create temp table for conversion
+        temp_table = Table(name=table_name, columns=columns, data=[], table_id=table_id)
 
         table_path = self.workdir / f"{table_id}.jsonl"
         if not table_path.exists():
@@ -865,7 +987,9 @@ class FileSystemJsonLTables(ITablesSnapshot):
                 if line.strip():
                     row = json.loads(line.strip())
                     if i == idx:
-                        row.update(changes)
+                        # Convert changes to column ID format
+                        changes_with_ids = temp_table.convert_row_to_column_ids(changes)
+                        row.update(changes_with_ids)
                     rows.append(row)
 
         if idx < 0 or idx >= len(rows):
@@ -901,7 +1025,16 @@ class ExtendedTables(ITablesSnapshot):
 
     def __init__(self, snapshot: ITablesSnapshot, tables: List[Table]):
         self.snapshot = snapshot
-        self.extra_tables = tables
+        self.extra_tables = []
+
+        # Convert existing table data to column ID format if needed
+        for table in tables:
+            converted_data = []
+            for row in table.data:
+                converted_row = table.convert_row_to_column_ids(row)
+                converted_data.append(converted_row)
+            table.data = converted_data
+            self.extra_tables.append(table)
 
     def get_table(self, name: str) -> Optional[Table]:
         table = self.snapshot.get_table(name)
@@ -909,7 +1042,18 @@ class ExtendedTables(ITablesSnapshot):
             return table
         for table in self.extra_tables:
             if table.name == name:
-                return table
+                # Create a copy with data converted to column names
+                converted_data = []
+                for row in table.data:
+                    converted_data.append(table.convert_row_from_column_ids(row))
+
+                result_table = Table(
+                    name=table.name,
+                    columns=table.columns,
+                    data=converted_data,
+                    table_id=table.table_id,
+                )
+                return result_table
         return None
 
     def add_table(self, table: Table):
@@ -929,37 +1073,35 @@ class ExtendedTables(ITablesSnapshot):
         for table in self.extra_tables:
             if table.name == table_name:
                 table.columns.append(column)
-                # Add default value to existing rows
+                # Add default value to existing rows using column ID
                 for row in table.data:
-                    row[column.name] = column.default
+                    row[column.column_id] = column.default
                 return
         self.snapshot.add_column(table_name, column)
 
     def remove_column(self, table_name: str, column_name: str):
         for table in self.extra_tables:
             if table.name == table_name:
+                # Find the column to get its ID before removing
+                column_to_remove = table.get_column(column_name)
                 table.columns = [
                     col for col in table.columns if col.name != column_name
                 ]
-                # Remove column from existing rows
-                for row in table.data:
-                    if column_name in row:
-                        del row[column_name]
+                # Remove column from existing rows using column ID
+                if column_to_remove:
+                    for row in table.data:
+                        row.pop(column_to_remove.column_id, None)
                 return
         self.snapshot.remove_column(table_name, column_name)
 
     def rename_column(self, table_name: str, old_name: str, new_name: str):
         for table in self.extra_tables:
             if table.name == table_name:
-                # Update column name
+                # Update column name (data doesn't need to change since we use column IDs)
                 for col in table.columns:
                     if col.name == old_name:
                         col.name = new_name
                         break
-                # Update data
-                for row in table.data:
-                    if old_name in row:
-                        row[new_name] = row.pop(old_name)
                 return
         self.snapshot.rename_column(table_name, old_name, new_name)
 
@@ -977,14 +1119,18 @@ class ExtendedTables(ITablesSnapshot):
     def insert(self, table_name: str, row: dict):
         for table in self.extra_tables:
             if table.name == table_name:
-                table.data.append(row)
+                # Convert row from column names to column IDs
+                row_with_ids = table.convert_row_to_column_ids(row)
+                table.data.append(row_with_ids)
                 return
         self.snapshot.insert(table_name, row)
 
     def update(self, table_name, idx, changes):
         for table in self.extra_tables:
             if table.name == table_name:
-                table.data[idx].update(changes)
+                # Convert changes from column names to column IDs
+                changes_with_ids = table.convert_row_to_column_ids(changes)
+                table.data[idx].update(changes_with_ids)
                 return
         self.snapshot.update(table_name, idx, changes)
 
