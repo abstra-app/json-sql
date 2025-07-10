@@ -15,7 +15,6 @@ from .tables import (
 from unittest import TestCase
 from tempfile import mkdtemp
 from shutil import rmtree
-from json import dumps
 
 
 class InMemoryTablesTest(TestCase):
@@ -55,8 +54,32 @@ class FsTablesTest(TestCase):
     def setUp(self):
         self.path = Path(mkdtemp())
         self.path.mkdir(parents=True, exist_ok=True)
-        self.path.joinpath("test_table.json").write_text(dumps([]))
-        self.path.joinpath("test_table.jsonl").touch()
+
+        # Create test table using the new UUID-based system
+        test_table = Table(
+            name="test_table",
+            columns=[
+                Column(name="id", type=ColumnType.int),
+                Column(name="name", type=ColumnType.string),
+            ],
+            data=[],
+        )
+
+        # For FileSystemJsonTables
+        tables_json = FileSystemJsonTables(workdir=self.path)
+        tables_json.add_table(test_table)
+
+        # For FileSystemJsonLTables
+        test_table_l = Table(
+            name="test_table",
+            columns=[
+                Column(name="id", type=ColumnType.int),
+                Column(name="name", type=ColumnType.string),
+            ],
+            data=[],
+        )
+        tables_jsonl = FileSystemJsonLTables(workdir=self.path)
+        tables_jsonl.add_table(test_table_l)
 
     def tearDown(self):
         rmtree(self.path)
@@ -321,13 +344,15 @@ class TestFileSystemJsonTables:
     def test_add_table(self, tables, sample_table, temp_dir):
         tables.add_table(sample_table)
 
-        # Check data file exists
-        assert (temp_dir / "users.json").exists()
+        # Check data file exists with UUID name
+        table_id = sample_table.table_id
+        assert (temp_dir / f"{table_id}.json").exists()
 
         # Check metadata is saved
         metadata = json.loads((temp_dir / "__schema__.json").read_text())
-        assert "users" in metadata
-        assert len(metadata["users"]) == 3
+        assert table_id in metadata
+        assert metadata[table_id]["table_name"] == "users"
+        assert len(metadata[table_id]["columns"]) == 3
 
     def test_add_duplicate_table(self, tables, sample_table, temp_dir):
         tables.add_table(sample_table)
@@ -347,22 +372,33 @@ class TestFileSystemJsonTables:
 
     def test_remove_table(self, tables, sample_table, temp_dir):
         tables.add_table(sample_table)
+        table_id = sample_table.table_id
+
+        # Verify file exists before removal
+        assert (temp_dir / f"{table_id}.json").exists()
+
         tables.remove_table("users")
 
-        assert not (temp_dir / "users.json").exists()
+        # File should be removed
+        assert not (temp_dir / f"{table_id}.json").exists()
+
+        # Metadata should be removed
         metadata = json.loads((temp_dir / "__schema__.json").read_text())
-        assert "users" not in metadata
+        assert table_id not in metadata
 
     def test_rename_table(self, tables, sample_table, temp_dir):
         tables.add_table(sample_table)
+        table_id = sample_table.table_id
+
         tables.rename_table("users", "people")
 
-        assert not (temp_dir / "users.json").exists()
-        assert (temp_dir / "people.json").exists()
+        # File name should stay the same (UUID-based)
+        assert (temp_dir / f"{table_id}.json").exists()
 
+        # Metadata should reflect the new table name
         metadata = json.loads((temp_dir / "__schema__.json").read_text())
-        assert "users" not in metadata
-        assert "people" in metadata
+        assert table_id in metadata
+        assert metadata[table_id]["table_name"] == "people"
 
     def test_add_column(self, tables, sample_table):
         tables.add_table(sample_table)
@@ -461,13 +497,15 @@ class TestFileSystemJsonLTables:
     def test_add_table(self, tables, sample_table, temp_dir):
         tables.add_table(sample_table)
 
-        # Check data file exists
-        assert (temp_dir / "users.jsonl").exists()
+        # Check data file exists with UUID name
+        table_id = sample_table.table_id
+        assert (temp_dir / f"{table_id}.jsonl").exists()
 
         # Check metadata is saved
         with (temp_dir / "__schema__.jsonl").open("r") as f:
             metadata_line = f.readline().strip()
             metadata = json.loads(metadata_line)
+            assert metadata["table_id"] == table_id
             assert metadata["table_name"] == "users"
             assert len(metadata["columns"]) == 3
 
@@ -484,9 +522,15 @@ class TestFileSystemJsonLTables:
 
     def test_remove_table(self, tables, sample_table, temp_dir):
         tables.add_table(sample_table)
+        table_id = sample_table.table_id
+
+        # Verify file exists before removal
+        assert (temp_dir / f"{table_id}.jsonl").exists()
+
         tables.remove_table("users")
 
-        assert not (temp_dir / "users.jsonl").exists()
+        # File should be removed
+        assert not (temp_dir / f"{table_id}.jsonl").exists()
 
         # Check metadata is removed
         with (temp_dir / "__schema__.jsonl").open("r") as f:
@@ -495,10 +539,12 @@ class TestFileSystemJsonLTables:
 
     def test_rename_table(self, tables, sample_table, temp_dir):
         tables.add_table(sample_table)
+        table_id = sample_table.table_id
+
         tables.rename_table("users", "people")
 
-        assert not (temp_dir / "users.jsonl").exists()
-        assert (temp_dir / "people.jsonl").exists()
+        # File name should stay the same (UUID-based)
+        assert (temp_dir / f"{table_id}.jsonl").exists()
 
         # Check metadata is updated
         with (temp_dir / "__schema__.jsonl").open("r") as f:
@@ -648,6 +694,116 @@ class TestExtendedTables:
 
         table = extended.get_table("extra")
         assert len(table.data) == 0
+
+
+def test_new_uuid_implementation():
+    """Test the new UUID-based file naming implementation"""
+    # Create a temporary directory
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+
+        # Create tables instance
+        tables = FileSystemJsonTables(workdir=temp_path)
+
+        # Create a sample table
+        table = Table(
+            name="users",
+            columns=[
+                Column(name="id", type=ColumnType.int, is_primary_key=True),
+                Column(name="name", type=ColumnType.string),
+            ],
+            data=[
+                {"id": 1, "name": "Alice"},
+                {"id": 2, "name": "Bob"},
+            ],
+        )
+
+        # Add the table
+        tables.add_table(table)
+
+        # Check that the UUID-named file exists
+        table_file = temp_path / f"{table.table_id}.json"
+        assert table_file.exists()
+
+        # Check schema file
+        schema_file = temp_path / "__schema__.json"
+        assert schema_file.exists()
+
+        schema_content = json.loads(schema_file.read_text())
+        assert table.table_id in schema_content
+        assert schema_content[table.table_id]["table_name"] == "users"
+
+        # Try to retrieve the table
+        retrieved_table = tables.get_table("users")
+        assert retrieved_table.name == "users"
+        assert retrieved_table.table_id == table.table_id
+        assert retrieved_table.data == [
+            {"id": 1, "name": "Alice"},
+            {"id": 2, "name": "Bob"},
+        ]
+
+        # Test insert
+        tables.insert("users", {"id": 3, "name": "Charlie"})
+
+        # Retrieve again
+        updated_table = tables.get_table("users")
+        assert len(updated_table.data) == 3
+        assert updated_table.data[2] == {"id": 3, "name": "Charlie"}
+
+
+def test_uuid_file_names_and_rename():
+    """Test UUID-based file naming and table rename behavior"""
+    # Create a temporary directory
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+
+        # Create tables instance
+        tables = FileSystemJsonTables(workdir=temp_path)
+
+        # Create a sample table
+        table = Table(
+            name="users",
+            columns=[
+                Column(name="id", type=ColumnType.int, is_primary_key=True),
+                Column(name="name", type=ColumnType.string),
+            ],
+            data=[
+                {"id": 1, "name": "Alice"},
+                {"id": 2, "name": "Bob"},
+            ],
+        )
+
+        # Add the table
+        tables.add_table(table)
+
+        # Verify initial files
+        uuid_file = temp_path / f"{table.table_id}.json"
+        schema_file = temp_path / "__schema__.json"
+
+        assert uuid_file.exists()
+        assert schema_file.exists()
+
+        # Check schema content
+        schema_content = json.loads(schema_file.read_text())
+        assert table.table_id in schema_content
+        assert schema_content[table.table_id]["table_name"] == "users"
+        assert len(schema_content[table.table_id]["columns"]) == 2
+
+        # Test rename
+        tables.rename_table("users", "people")
+
+        # File name should stay the same (UUID-based)
+        assert uuid_file.exists()
+
+        # Schema content should reflect the new table name
+        schema_content_after = json.loads(schema_file.read_text())
+        assert table.table_id in schema_content_after
+        assert schema_content_after[table.table_id]["table_name"] == "people"
+
+        # Should be able to retrieve by new name
+        retrieved_table = tables.get_table("people")
+        assert retrieved_table.name == "people"
+        assert retrieved_table.table_id == table.table_id
 
 
 if __name__ == "__main__":

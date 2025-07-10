@@ -3,6 +3,7 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 import json
 from enum import Enum
+import uuid
 
 
 class ColumnType(Enum):
@@ -104,10 +105,17 @@ class Column:
 
 
 class Table:
-    def __init__(self, name: str, columns: List[Column], data: List[dict] = None):
+    def __init__(
+        self,
+        name: str,
+        columns: List[Column],
+        data: List[dict] = None,
+        table_id: str = None,
+    ):
         self.name = name
         self.columns = columns
         self.data = data if data is not None else []
+        self.table_id = table_id if table_id is not None else str(uuid.uuid4())
 
     def get_column(self, name: str) -> Optional[Column]:
         for column in self.columns:
@@ -184,6 +192,7 @@ class InMemoryTables(ITablesSnapshot):
                             name=table["name"],
                             columns=columns,
                             data=table.get("data", []),
+                            table_id=table.get("table_id"),
                         )
                     )
                 else:
@@ -277,42 +286,71 @@ class FileSystemJsonTables(ITablesSnapshot):
         if not metadata_path.exists():
             metadata_path.write_text(json.dumps({}))
 
-    def _get_table_metadata(self, table_name: str) -> List[Column]:
-        """Get table metadata from the __schema__.json file"""
+    def _get_table_metadata_by_name(
+        self, table_name: str
+    ) -> tuple[Optional[str], Optional[List[Column]]]:
+        """Get table metadata (id and columns) by table name from the __schema__.json file"""
         metadata_path = self.workdir / "__schema__.json"
         metadata = json.loads(metadata_path.read_text())
-        table_metadata = metadata.get(table_name, [])
-        columns = []
-        for col_dict in table_metadata:
-            columns.append(Column.from_dict(col_dict))
-        return columns
 
-    def _save_table_metadata(self, table_name: str, columns: List[Column]):
+        for table_id, table_info in metadata.items():
+            if table_info.get("table_name") == table_name:
+                columns = []
+                for col_dict in table_info.get("columns", []):
+                    columns.append(Column.from_dict(col_dict))
+                return table_id, columns
+        return None, None
+
+    def _get_table_metadata_by_id(
+        self, table_id: str
+    ) -> tuple[Optional[str], Optional[List[Column]]]:
+        """Get table metadata (name and columns) by table ID from the __schema__.json file"""
+        metadata_path = self.workdir / "__schema__.json"
+        metadata = json.loads(metadata_path.read_text())
+
+        table_info = metadata.get(table_id)
+        if table_info:
+            columns = []
+            for col_dict in table_info.get("columns", []):
+                columns.append(Column.from_dict(col_dict))
+            return table_info.get("table_name"), columns
+        return None, None
+
+    def _save_table_metadata(
+        self, table_id: str, table_name: str, columns: List[Column]
+    ):
         """Save table metadata to the __schema__.json file"""
         metadata_path = self.workdir / "__schema__.json"
         metadata = json.loads(metadata_path.read_text())
+
         # Convert Column objects to dicts with proper serialization
         column_dicts = []
         for col in columns:
             col_dict = col.to_dict()
             column_dicts.append(col_dict)
-        metadata[table_name] = column_dicts
+
+        metadata[table_id] = {"table_name": table_name, "columns": column_dicts}
         metadata_path.write_text(json.dumps(metadata, indent=2))
 
-    def _remove_table_metadata(self, table_name: str):
+    def _remove_table_metadata(self, table_id: str):
         """Remove table metadata from the __schema__.json file"""
         metadata_path = self.workdir / "__schema__.json"
         metadata = json.loads(metadata_path.read_text())
-        if table_name in metadata:
-            del metadata[table_name]
+        if table_id in metadata:
+            del metadata[table_id]
         metadata_path.write_text(json.dumps(metadata, indent=2))
 
-    def get_table(self, name: str):
-        table_path = self.workdir / f"{name}.json"
+    def get_table(self, name: str) -> Optional[Table]:
+        table_id, columns = self._get_table_metadata_by_name(name)
+        if table_id is None:
+            raise FileNotFoundError(f"Table {name} not found")
+
+        table_path = self.workdir / f"{table_id}.json"
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
+
         rows = json.loads(table_path.read_text())
-        columns = self._get_table_metadata(name)
+
         if not columns:
             # Fallback: infer columns from data if metadata doesn't exist
             columns_set = set()
@@ -324,42 +362,58 @@ class FileSystemJsonTables(ITablesSnapshot):
                         columns_set.add(col)
             columns = list(columns_set)
             # Save inferred metadata
-            self._save_table_metadata(name, columns)
-        return Table(name=name, columns=columns, data=rows)
+            self._save_table_metadata(table_id, name, columns)
+
+        return Table(name=name, columns=columns, data=rows, table_id=table_id)
 
     def add_table(self, table: Table):
-        table_path = self.workdir / f"{table.name}.json"
-        if table_path.exists():
+        # Check if table name already exists
+        existing_id, _ = self._get_table_metadata_by_name(table.name)
+        if existing_id is not None:
             raise ValueError(f"Table {table.name} already exists")
+
+        table_path = self.workdir / f"{table.table_id}.json"
+        if table_path.exists():
+            raise ValueError(f"Table with ID {table.table_id} already exists")
+
         table_path.write_text(json.dumps(table.data, indent=2))
         # Save columns metadata
-        self._save_table_metadata(table.name, table.columns)
+        self._save_table_metadata(table.table_id, table.name, table.columns)
 
     def remove_table(self, name: str):
-        table_path = self.workdir / f"{name}.json"
+        table_id, _ = self._get_table_metadata_by_name(name)
+        if table_id is None:
+            raise ValueError(f"Table {name} not found")
+
+        table_path = self.workdir / f"{table_id}.json"
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
+
         table_path.unlink()
-        self._remove_table_metadata(name)
+        self._remove_table_metadata(table_id)
 
     def rename_table(self, old_name: str, new_name: str):
-        old_path = self.workdir / f"{old_name}.json"
-        new_path = self.workdir / f"{new_name}.json"
-        if not old_path.exists():
-            raise FileNotFoundError(f"File {old_path} does not exist")
-        if new_path.exists():
-            raise ValueError(f"File {new_path} already exists")
-        old_path.rename(new_path)
+        table_id, columns = self._get_table_metadata_by_name(old_name)
+        if table_id is None:
+            raise ValueError(f"Table {old_name} not found")
 
-        # Update metadata
-        columns = self._get_table_metadata(old_name)
-        self._remove_table_metadata(old_name)
-        self._save_table_metadata(new_name, columns)
+        # Check if new name already exists
+        existing_id, _ = self._get_table_metadata_by_name(new_name)
+        if existing_id is not None:
+            raise ValueError(f"Table {new_name} already exists")
+
+        # Update metadata with new name
+        self._save_table_metadata(table_id, new_name, columns)
 
     def insert(self, table_name: str, row: dict):
-        table_path = self.workdir / f"{table_name}.json"
+        table_id, _ = self._get_table_metadata_by_name(table_name)
+        if table_id is None:
+            raise ValueError(f"Table {table_name} not found")
+
+        table_path = self.workdir / f"{table_id}.json"
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
+
         rows = json.loads(table_path.read_text())
         assert isinstance(
             rows, list
@@ -368,16 +422,20 @@ class FileSystemJsonTables(ITablesSnapshot):
         table_path.write_text(json.dumps(rows, indent=2))
 
     def add_column(self, table_name: str, column: Column):
-        table_path = self.workdir / f"{table_name}.json"
+        table_id, existing_columns = self._get_table_metadata_by_name(table_name)
+        if table_id is None:
+            raise ValueError(f"Table {table_name} not found")
+
+        table_path = self.workdir / f"{table_id}.json"
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
+
         rows = json.loads(table_path.read_text())
         assert isinstance(
             rows, list
         ), f"File {table_path} does not contain a list of rows"
 
         # Check if column already exists
-        existing_columns = self._get_table_metadata(table_name)
         if any(col.name == column.name for col in existing_columns):
             raise ValueError(
                 f"Column {column.name} already exists in table {table_name}"
@@ -390,12 +448,17 @@ class FileSystemJsonTables(ITablesSnapshot):
 
         # Update metadata
         existing_columns.append(column)
-        self._save_table_metadata(table_name, existing_columns)
+        self._save_table_metadata(table_id, table_name, existing_columns)
 
     def remove_column(self, table_name: str, column_name: str):
-        table_path = self.workdir / f"{table_name}.json"
+        table_id, columns = self._get_table_metadata_by_name(table_name)
+        if table_id is None:
+            raise ValueError(f"Table {table_name} not found")
+
+        table_path = self.workdir / f"{table_id}.json"
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
+
         rows = json.loads(table_path.read_text())
         assert isinstance(
             rows, list
@@ -408,14 +471,18 @@ class FileSystemJsonTables(ITablesSnapshot):
         table_path.write_text(json.dumps(rows, indent=2))
 
         # Update metadata
-        columns = self._get_table_metadata(table_name)
         columns = [col for col in columns if col.name != column_name]
-        self._save_table_metadata(table_name, columns)
+        self._save_table_metadata(table_id, table_name, columns)
 
     def rename_column(self, table_name: str, old_name: str, new_name: str):
-        table_path = self.workdir / f"{table_name}.json"
+        table_id, columns = self._get_table_metadata_by_name(table_name)
+        if table_id is None:
+            raise ValueError(f"Table {table_name} not found")
+
+        table_path = self.workdir / f"{table_id}.json"
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
+
         rows = json.loads(table_path.read_text())
         assert isinstance(
             rows, list
@@ -428,29 +495,36 @@ class FileSystemJsonTables(ITablesSnapshot):
         table_path.write_text(json.dumps(rows, indent=2))
 
         # Update metadata
-        columns = self._get_table_metadata(table_name)
         for col in columns:
             if col.name == old_name:
                 col.name = new_name
-        self._save_table_metadata(table_name, columns)
+        self._save_table_metadata(table_id, table_name, columns)
 
     def change_column_type(
         self, table_name: str, column_name: str, new_type: ColumnType
     ):
+        table_id, columns = self._get_table_metadata_by_name(table_name)
+        if table_id is None:
+            raise ValueError(f"Table {table_name} not found")
+
         # Update metadata
-        columns = self._get_table_metadata(table_name)
         for col in columns:
             if col.name == column_name:
                 col.type = new_type
                 break
         else:
             raise ValueError(f"Column {column_name} not found in table {table_name}")
-        self._save_table_metadata(table_name, columns)
+        self._save_table_metadata(table_id, table_name, columns)
 
     def update(self, table_name: str, idx: int, changes: dict):
-        table_path = self.workdir / f"{table_name}.json"
+        table_id, _ = self._get_table_metadata_by_name(table_name)
+        if table_id is None:
+            raise ValueError(f"Table {table_name} not found")
+
+        table_path = self.workdir / f"{table_id}.json"
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
+
         rows = json.loads(table_path.read_text())
         assert isinstance(
             rows, list
@@ -461,9 +535,14 @@ class FileSystemJsonTables(ITablesSnapshot):
         table_path.write_text(json.dumps(rows, indent=2))
 
     def delete(self, table_name: str, idxs: List[int]):
-        table_path = self.workdir / f"{table_name}.json"
+        table_id, _ = self._get_table_metadata_by_name(table_name)
+        if table_id is None:
+            raise ValueError(f"Table {table_name} not found")
+
+        table_path = self.workdir / f"{table_id}.json"
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
+
         rows = json.loads(table_path.read_text())
         assert isinstance(
             rows, list
@@ -490,24 +569,49 @@ class FileSystemJsonLTables(ITablesSnapshot):
         if not metadata_path.exists():
             metadata_path.write_text("")
 
-    def _get_table_metadata(self, table_name: str) -> List[Column]:
-        """Get table metadata from the __schema__.jsonl file"""
+    def _get_table_metadata_by_name(
+        self, table_name: str
+    ) -> tuple[Optional[str], Optional[List[Column]]]:
+        """Get table metadata (id and columns) by table name from the __schema__.jsonl file"""
         metadata_path = self.workdir / "__schema__.jsonl"
         if not metadata_path.exists():
-            return []
+            return None, None
 
         with metadata_path.open("r") as f:
             for line in f:
                 if line.strip():
                     metadata_entry = json.loads(line.strip())
                     if metadata_entry.get("table_name") == table_name:
+                        table_id = metadata_entry.get("table_id")
                         columns = []
                         for col_dict in metadata_entry.get("columns", []):
                             columns.append(Column.from_dict(col_dict))
-                        return columns
-        return []
+                        return table_id, columns
+        return None, None
 
-    def _save_table_metadata(self, table_name: str, columns: List[Column]):
+    def _get_table_metadata_by_id(
+        self, table_id: str
+    ) -> tuple[Optional[str], Optional[List[Column]]]:
+        """Get table metadata (name and columns) by table ID from the __schema__.jsonl file"""
+        metadata_path = self.workdir / "__schema__.jsonl"
+        if not metadata_path.exists():
+            return None, None
+
+        with metadata_path.open("r") as f:
+            for line in f:
+                if line.strip():
+                    metadata_entry = json.loads(line.strip())
+                    if metadata_entry.get("table_id") == table_id:
+                        table_name = metadata_entry.get("table_name")
+                        columns = []
+                        for col_dict in metadata_entry.get("columns", []):
+                            columns.append(Column.from_dict(col_dict))
+                        return table_name, columns
+        return None, None
+
+    def _save_table_metadata(
+        self, table_id: str, table_name: str, columns: List[Column]
+    ):
         """Save table metadata to the __schema__.jsonl file"""
         metadata_path = self.workdir / "__schema__.jsonl"
 
@@ -518,7 +622,10 @@ class FileSystemJsonLTables(ITablesSnapshot):
                 for line in f:
                     if line.strip():
                         metadata_entry = json.loads(line.strip())
-                        if metadata_entry.get("table_name") != table_name:
+                        if (
+                            metadata_entry.get("table_id") != table_id
+                            and metadata_entry.get("table_name") != table_name
+                        ):
                             existing_metadata.append(metadata_entry)
 
         # Add the new metadata entry
@@ -527,7 +634,11 @@ class FileSystemJsonLTables(ITablesSnapshot):
             col_dict = col.to_dict()
             column_dicts.append(col_dict)
 
-        new_entry = {"table_name": table_name, "columns": column_dicts}
+        new_entry = {
+            "table_id": table_id,
+            "table_name": table_name,
+            "columns": column_dicts,
+        }
         existing_metadata.append(new_entry)
 
         # Write all metadata back
@@ -535,7 +646,7 @@ class FileSystemJsonLTables(ITablesSnapshot):
             for entry in existing_metadata:
                 f.write(json.dumps(entry) + "\n")
 
-    def _remove_table_metadata(self, table_name: str):
+    def _remove_table_metadata(self, table_id: str):
         """Remove table metadata from the __schema__.jsonl file"""
         metadata_path = self.workdir / "__schema__.jsonl"
         if not metadata_path.exists():
@@ -547,7 +658,7 @@ class FileSystemJsonLTables(ITablesSnapshot):
             for line in f:
                 if line.strip():
                     metadata_entry = json.loads(line.strip())
-                    if metadata_entry.get("table_name") != table_name:
+                    if metadata_entry.get("table_id") != table_id:
                         remaining_metadata.append(metadata_entry)
 
         # Write remaining metadata back
@@ -556,13 +667,15 @@ class FileSystemJsonLTables(ITablesSnapshot):
                 f.write(json.dumps(entry) + "\n")
 
     def get_table(self, name: str) -> Optional[Table]:
-        table_path = self.workdir / f"{name}.jsonl"
+        table_id, columns = self._get_table_metadata_by_name(name)
+        if table_id is None:
+            raise FileNotFoundError(f"Table {name} not found")
+
+        table_path = self.workdir / f"{table_id}.jsonl"
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
 
-        columns = self._get_table_metadata(name)
         data = []
-
         with table_path.open("r") as f:
             for line in f:
                 if line.strip():
@@ -580,48 +693,61 @@ class FileSystemJsonLTables(ITablesSnapshot):
                         columns_set.add(col)
             columns = list(columns_set)
             # Save inferred metadata
-            self._save_table_metadata(name, columns)
+            self._save_table_metadata(table_id, name, columns)
 
-        return Table(name=name, columns=columns, data=data)
+        return Table(name=name, columns=columns, data=data, table_id=table_id)
 
     def add_table(self, table: Table):
-        table_path = self.workdir / f"{table.name}.jsonl"
-        if table_path.exists():
+        # Check if table name already exists
+        existing_id, _ = self._get_table_metadata_by_name(table.name)
+        if existing_id is not None:
             raise ValueError(f"Table {table.name} already exists")
+
+        table_path = self.workdir / f"{table.table_id}.jsonl"
+        if table_path.exists():
+            raise ValueError(f"Table with ID {table.table_id} already exists")
+
         with table_path.open("w") as f:
             for row in table.data:
                 f.write(json.dumps(row) + "\n")
         # Save columns metadata
-        self._save_table_metadata(table.name, table.columns)
+        self._save_table_metadata(table.table_id, table.name, table.columns)
 
     def remove_table(self, name: str):
-        table_path = self.workdir / f"{name}.jsonl"
+        table_id, _ = self._get_table_metadata_by_name(name)
+        if table_id is None:
+            raise ValueError(f"Table {name} not found")
+
+        table_path = self.workdir / f"{table_id}.jsonl"
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
+
         table_path.unlink()
-        self._remove_table_metadata(name)
+        self._remove_table_metadata(table_id)
 
     def rename_table(self, old_name: str, new_name: str):
-        old_path = self.workdir / f"{old_name}.jsonl"
-        new_path = self.workdir / f"{new_name}.jsonl"
-        if not old_path.exists():
-            raise FileNotFoundError(f"File {old_path} does not exist")
-        if new_path.exists():
-            raise ValueError(f"File {new_path} already exists")
-        old_path.rename(new_path)
+        table_id, columns = self._get_table_metadata_by_name(old_name)
+        if table_id is None:
+            raise ValueError(f"Table {old_name} not found")
 
-        # Update metadata
-        columns = self._get_table_metadata(old_name)
-        self._remove_table_metadata(old_name)
-        self._save_table_metadata(new_name, columns)
+        # Check if new name already exists
+        existing_id, _ = self._get_table_metadata_by_name(new_name)
+        if existing_id is not None:
+            raise ValueError(f"Table {new_name} already exists")
+
+        # Update metadata with new name
+        self._save_table_metadata(table_id, new_name, columns)
 
     def add_column(self, table_name: str, column: Column):
-        table_path = self.workdir / f"{table_name}.jsonl"
+        table_id, existing_columns = self._get_table_metadata_by_name(table_name)
+        if table_id is None:
+            raise ValueError(f"Table {table_name} not found")
+
+        table_path = self.workdir / f"{table_id}.jsonl"
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
 
         # Check if column already exists
-        existing_columns = self._get_table_metadata(table_name)
         if any(col.name == column.name for col in existing_columns):
             raise ValueError(
                 f"Column {column.name} already exists in table {table_name}"
@@ -642,10 +768,14 @@ class FileSystemJsonLTables(ITablesSnapshot):
 
         # Update metadata
         existing_columns.append(column)
-        self._save_table_metadata(table_name, existing_columns)
+        self._save_table_metadata(table_id, table_name, existing_columns)
 
     def remove_column(self, table_name: str, column_name: str):
-        table_path = self.workdir / f"{table_name}.jsonl"
+        table_id, columns = self._get_table_metadata_by_name(table_name)
+        if table_id is None:
+            raise ValueError(f"Table {table_name} not found")
+
+        table_path = self.workdir / f"{table_id}.jsonl"
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
 
@@ -663,12 +793,15 @@ class FileSystemJsonLTables(ITablesSnapshot):
                 f.write(json.dumps(row) + "\n")
 
         # Update metadata
-        columns = self._get_table_metadata(table_name)
         columns = [col for col in columns if col.name != column_name]
-        self._save_table_metadata(table_name, columns)
+        self._save_table_metadata(table_id, table_name, columns)
 
     def rename_column(self, table_name: str, old_name: str, new_name: str):
-        table_path = self.workdir / f"{table_name}.jsonl"
+        table_id, columns = self._get_table_metadata_by_name(table_name)
+        if table_id is None:
+            raise ValueError(f"Table {table_name} not found")
+
+        table_path = self.workdir / f"{table_id}.jsonl"
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
 
@@ -687,32 +820,42 @@ class FileSystemJsonLTables(ITablesSnapshot):
                 f.write(json.dumps(row) + "\n")
 
         # Update metadata
-        columns = self._get_table_metadata(table_name)
         for col in columns:
             if col.name == old_name:
                 col.name = new_name
-        self._save_table_metadata(table_name, columns)
+        self._save_table_metadata(table_id, table_name, columns)
 
     def change_column_type(
         self, table_name: str, column_name: str, new_type: ColumnType
     ):
+        table_id, columns = self._get_table_metadata_by_name(table_name)
+        if table_id is None:
+            raise ValueError(f"Table {table_name} not found")
+
         # Update metadata
-        columns = self._get_table_metadata(table_name)
         for col in columns:
             if col.name == column_name:
                 col.type = new_type
                 break
         else:
             raise ValueError(f"Column {column_name} not found in table {table_name}")
-        self._save_table_metadata(table_name, columns)
+        self._save_table_metadata(table_id, table_name, columns)
 
     def insert(self, table_name: str, row: dict):
-        table_path = self.workdir / f"{table_name}.jsonl"
+        table_id, _ = self._get_table_metadata_by_name(table_name)
+        if table_id is None:
+            raise ValueError(f"Table {table_name} not found")
+
+        table_path = self.workdir / f"{table_id}.jsonl"
         with table_path.open("a") as f:
             f.write(json.dumps(row) + "\n")
 
     def update(self, table_name: str, idx: int, changes: dict):
-        table_path = self.workdir / f"{table_name}.jsonl"
+        table_id, _ = self._get_table_metadata_by_name(table_name)
+        if table_id is None:
+            raise ValueError(f"Table {table_name} not found")
+
+        table_path = self.workdir / f"{table_id}.jsonl"
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
 
@@ -733,7 +876,11 @@ class FileSystemJsonLTables(ITablesSnapshot):
                 f.write(json.dumps(row) + "\n")
 
     def delete(self, table_name: str, idxs: List[int]):
-        table_path = self.workdir / f"{table_name}.jsonl"
+        table_id, _ = self._get_table_metadata_by_name(table_name)
+        if table_id is None:
+            raise ValueError(f"Table {table_name} not found")
+
+        table_path = self.workdir / f"{table_id}.jsonl"
         if not table_path.exists():
             raise FileNotFoundError(f"File {table_path} does not exist")
 
