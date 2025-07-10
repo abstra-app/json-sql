@@ -273,13 +273,13 @@ class FileSystemJsonTables(ITablesSnapshot):
 
     def _ensure_metadata_table(self):
         """Ensure the metadata table exists"""
-        metadata_path = self.workdir / "metadata.json"
+        metadata_path = self.workdir / "__schema__.json"
         if not metadata_path.exists():
             metadata_path.write_text(json.dumps({}))
 
     def _get_table_metadata(self, table_name: str) -> List[Column]:
-        """Get table metadata from the metadata.json file"""
-        metadata_path = self.workdir / "metadata.json"
+        """Get table metadata from the __schema__.json file"""
+        metadata_path = self.workdir / "__schema__.json"
         metadata = json.loads(metadata_path.read_text())
         table_metadata = metadata.get(table_name, [])
         columns = []
@@ -288,8 +288,8 @@ class FileSystemJsonTables(ITablesSnapshot):
         return columns
 
     def _save_table_metadata(self, table_name: str, columns: List[Column]):
-        """Save table metadata to the metadata.json file"""
-        metadata_path = self.workdir / "metadata.json"
+        """Save table metadata to the __schema__.json file"""
+        metadata_path = self.workdir / "__schema__.json"
         metadata = json.loads(metadata_path.read_text())
         # Convert Column objects to dicts with proper serialization
         column_dicts = []
@@ -300,8 +300,8 @@ class FileSystemJsonTables(ITablesSnapshot):
         metadata_path.write_text(json.dumps(metadata, indent=2))
 
     def _remove_table_metadata(self, table_name: str):
-        """Remove table metadata from the metadata.json file"""
-        metadata_path = self.workdir / "metadata.json"
+        """Remove table metadata from the __schema__.json file"""
+        metadata_path = self.workdir / "__schema__.json"
         metadata = json.loads(metadata_path.read_text())
         if table_name in metadata:
             del metadata[table_name]
@@ -486,13 +486,13 @@ class FileSystemJsonLTables(ITablesSnapshot):
 
     def _ensure_metadata_table(self):
         """Ensure the metadata table exists"""
-        metadata_path = self.workdir / "metadata.jsonl"
+        metadata_path = self.workdir / "__schema__.jsonl"
         if not metadata_path.exists():
             metadata_path.write_text("")
 
     def _get_table_metadata(self, table_name: str) -> List[Column]:
-        """Get table metadata from the metadata.jsonl file"""
-        metadata_path = self.workdir / "metadata.jsonl"
+        """Get table metadata from the __schema__.jsonl file"""
+        metadata_path = self.workdir / "__schema__.jsonl"
         if not metadata_path.exists():
             return []
 
@@ -508,8 +508,8 @@ class FileSystemJsonLTables(ITablesSnapshot):
         return []
 
     def _save_table_metadata(self, table_name: str, columns: List[Column]):
-        """Save table metadata to the metadata.jsonl file"""
-        metadata_path = self.workdir / "metadata.jsonl"
+        """Save table metadata to the __schema__.jsonl file"""
+        metadata_path = self.workdir / "__schema__.jsonl"
 
         # Read existing metadata and filter out the current table
         existing_metadata = []
@@ -536,8 +536,8 @@ class FileSystemJsonLTables(ITablesSnapshot):
                 f.write(json.dumps(entry) + "\n")
 
     def _remove_table_metadata(self, table_name: str):
-        """Remove table metadata from the metadata.jsonl file"""
-        metadata_path = self.workdir / "metadata.jsonl"
+        """Remove table metadata from the __schema__.jsonl file"""
+        metadata_path = self.workdir / "__schema__.jsonl"
         if not metadata_path.exists():
             return
 

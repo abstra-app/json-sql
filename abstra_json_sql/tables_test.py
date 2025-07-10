@@ -314,8 +314,8 @@ class TestFileSystemJsonTables:
         )
 
     def test_metadata_table_creation(self, tables, temp_dir):
-        assert (temp_dir / "metadata.json").exists()
-        metadata = json.loads((temp_dir / "metadata.json").read_text())
+        assert (temp_dir / "__schema__.json").exists()
+        metadata = json.loads((temp_dir / "__schema__.json").read_text())
         assert metadata == {}
 
     def test_add_table(self, tables, sample_table, temp_dir):
@@ -325,7 +325,7 @@ class TestFileSystemJsonTables:
         assert (temp_dir / "users.json").exists()
 
         # Check metadata is saved
-        metadata = json.loads((temp_dir / "metadata.json").read_text())
+        metadata = json.loads((temp_dir / "__schema__.json").read_text())
         assert "users" in metadata
         assert len(metadata["users"]) == 3
 
@@ -350,7 +350,7 @@ class TestFileSystemJsonTables:
         tables.remove_table("users")
 
         assert not (temp_dir / "users.json").exists()
-        metadata = json.loads((temp_dir / "metadata.json").read_text())
+        metadata = json.loads((temp_dir / "__schema__.json").read_text())
         assert "users" not in metadata
 
     def test_rename_table(self, tables, sample_table, temp_dir):
@@ -360,7 +360,7 @@ class TestFileSystemJsonTables:
         assert not (temp_dir / "users.json").exists()
         assert (temp_dir / "people.json").exists()
 
-        metadata = json.loads((temp_dir / "metadata.json").read_text())
+        metadata = json.loads((temp_dir / "__schema__.json").read_text())
         assert "users" not in metadata
         assert "people" in metadata
 
@@ -456,7 +456,7 @@ class TestFileSystemJsonLTables:
         )
 
     def test_metadata_table_creation(self, tables, temp_dir):
-        assert (temp_dir / "metadata.jsonl").exists()
+        assert (temp_dir / "__schema__.jsonl").exists()
 
     def test_add_table(self, tables, sample_table, temp_dir):
         tables.add_table(sample_table)
@@ -465,7 +465,7 @@ class TestFileSystemJsonLTables:
         assert (temp_dir / "users.jsonl").exists()
 
         # Check metadata is saved
-        with (temp_dir / "metadata.jsonl").open("r") as f:
+        with (temp_dir / "__schema__.jsonl").open("r") as f:
             metadata_line = f.readline().strip()
             metadata = json.loads(metadata_line)
             assert metadata["table_name"] == "users"
@@ -489,7 +489,7 @@ class TestFileSystemJsonLTables:
         assert not (temp_dir / "users.jsonl").exists()
 
         # Check metadata is removed
-        with (temp_dir / "metadata.jsonl").open("r") as f:
+        with (temp_dir / "__schema__.jsonl").open("r") as f:
             content = f.read().strip()
             assert not content  # Should be empty
 
@@ -501,7 +501,7 @@ class TestFileSystemJsonLTables:
         assert (temp_dir / "people.jsonl").exists()
 
         # Check metadata is updated
-        with (temp_dir / "metadata.jsonl").open("r") as f:
+        with (temp_dir / "__schema__.jsonl").open("r") as f:
             metadata_line = f.readline().strip()
             metadata = json.loads(metadata_line)
             assert metadata["table_name"] == "people"
