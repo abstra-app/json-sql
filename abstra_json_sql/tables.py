@@ -2,12 +2,6 @@ from typing import Any, List, Optional
 from abc import ABC, abstractmethod
 from enum import Enum
 import uuid
-from .persistence import (
-    InMemoryTables,
-    FileSystemJsonTables,
-    FileSystemJsonLTables,
-    ExtendedTables,
-)
 
 
 class ColumnType(Enum):
@@ -217,8 +211,4 @@ __all__ = [
     "Column",
     "Table",
     "ITablesSnapshot",
-    "InMemoryTables",
-    "FileSystemJsonTables",
-    "FileSystemJsonLTables",
-    "ExtendedTables",
 ]

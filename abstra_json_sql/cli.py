@@ -1,5 +1,6 @@
 from pathlib import Path
-from .tables import FileSystemJsonLTables, Column, ColumnType, Table
+from .tables import Column, ColumnType, Table
+from .persistence import FileSystemJsonLTables
 from .eval import eval_sql
 from argparse import ArgumentParser
 from csv import DictWriter

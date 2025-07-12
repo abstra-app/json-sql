@@ -15,6 +15,8 @@ from abstra_json_sql.tables import (
     Column,
     ColumnType,
     Table,
+)
+from abstra_json_sql.persistence import (
     InMemoryTables,
     FileSystemJsonTables,
 )

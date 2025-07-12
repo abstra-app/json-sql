@@ -2,7 +2,8 @@ from typing import List, Dict, Optional
 from .infer import infer_expression
 from .parser import parse_expression
 from .lexer import scan
-from .tables import ITablesSnapshot, Table, ExtendedTables, Column
+from .tables import ITablesSnapshot, Table, Column
+from .persistence import ExtendedTables
 from .field_name import field_name, expression_name
 from .ast import (
     Delete,
