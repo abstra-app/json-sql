@@ -2,6 +2,13 @@ from typing import Any, List, Optional
 from abc import ABC, abstractmethod
 from enum import Enum
 import uuid
+from .persistence import (
+    InMemoryTables,
+    FileSystemJsonTables,
+    FileSystemJsonLTables,
+    ExtendedTables,
+)
+
 
 class ColumnType(Enum):
     int = "int"
@@ -203,14 +210,6 @@ class ITablesSnapshot(ABC):
     def delete(self, table_name: str, idxs: List[int]):
         raise NotImplementedError("delete method must be implemented")
 
-
-# Import persistence implementations for backward compatibility
-from .persistence import (
-    InMemoryTables,
-    FileSystemJsonTables,
-    FileSystemJsonLTables,
-    ExtendedTables,
-)
 
 __all__ = [
     "ColumnType",
