@@ -32,7 +32,7 @@ def interactive_create_table(workdir: Path):
     """Create a table interactively by asking user for table name, columns, etc."""
     try:
         tables = FileSystemJsonLTables(workdir=workdir)
-        
+
         # Get table name
         print("Creating a new table...")
         while True:
@@ -44,19 +44,21 @@ def interactive_create_table(workdir: Path):
                 # Check if table already exists
                 existing_table = tables.get_table(table_name)
                 if existing_table:
-                    print(f"Table '{table_name}' already exists. Please choose a different name.")
+                    print(
+                        f"Table '{table_name}' already exists. Please choose a different name."
+                    )
                     continue
                 break
             except FileNotFoundError:
                 # Table doesn't exist, which is what we want
                 break
-        
+
         # Get columns
         columns = []
         print(f"\nNow let's add columns to the '{table_name}' table.")
         print("Available column types: int, string, float, bool")
         print("Press Enter with empty column name to finish adding columns.\n")
-        
+
         while True:
             column_name = input("Column name: ").strip()
             if not column_name:
@@ -64,29 +66,43 @@ def interactive_create_table(workdir: Path):
                     print("At least one column is required. Please add a column.")
                     continue
                 break
-            
+
             # Check if column name already exists
             if any(col.name == column_name for col in columns):
-                print(f"Column '{column_name}' already exists. Please choose a different name.")
+                print(
+                    f"Column '{column_name}' already exists. Please choose a different name."
+                )
                 continue
-            
+
             # Get column type
             while True:
-                column_type_str = input(f"Column type for '{column_name}' (int/string/float/bool): ").strip().lower()
+                column_type_str = (
+                    input(f"Column type for '{column_name}' (int/string/float/bool): ")
+                    .strip()
+                    .lower()
+                )
                 if column_type_str in ["int", "string", "float", "bool"]:
                     column_type = ColumnType(column_type_str)
                     break
                 else:
-                    print("Invalid column type. Please enter: int, string, float, or bool")
-            
+                    print(
+                        "Invalid column type. Please enter: int, string, float, or bool"
+                    )
+
             # Ask if it's a primary key
-            is_primary = input(f"Is '{column_name}' a primary key? (y/N): ").strip().lower()
-            is_primary_key = is_primary in ['y', 'yes']
-            
+            is_primary = (
+                input(f"Is '{column_name}' a primary key? (y/N): ").strip().lower()
+            )
+            is_primary_key = is_primary in ["y", "yes"]
+
             # Ask for default value
             default_value = None
-            has_default = input(f"Does '{column_name}' have a default value? (y/N): ").strip().lower()
-            if has_default in ['y', 'yes']:
+            has_default = (
+                input(f"Does '{column_name}' have a default value? (y/N): ")
+                .strip()
+                .lower()
+            )
+            if has_default in ["y", "yes"]:
                 while True:
                     default_str = input(f"Default value for '{column_name}': ").strip()
                     try:
@@ -96,11 +112,11 @@ def interactive_create_table(workdir: Path):
                         elif column_type == ColumnType.float:
                             default_value = float(default_str) if default_str else None
                         elif column_type == ColumnType.bool:
-                            if default_str.lower() in ['true', '1', 'yes', 'y']:
+                            if default_str.lower() in ["true", "1", "yes", "y"]:
                                 default_value = True
-                            elif default_str.lower() in ['false', '0', 'no', 'n']:
+                            elif default_str.lower() in ["false", "0", "no", "n"]:
                                 default_value = False
-                            elif default_str == '':
+                            elif default_str == "":
                                 default_value = None
                             else:
                                 raise ValueError("Invalid boolean value")
@@ -108,29 +124,33 @@ def interactive_create_table(workdir: Path):
                             default_value = default_str if default_str else None
                         break
                     except ValueError:
-                        print(f"Invalid default value for {column_type.value} type. Please try again.")
-            
+                        print(
+                            f"Invalid default value for {column_type.value} type. Please try again."
+                        )
+
             # Create column
             column = Column(
                 name=column_name,
                 type=column_type,
                 is_primary_key=is_primary_key,
-                default=default_value
+                default=default_value,
             )
             columns.append(column)
             print(f"✓ Added column '{column_name}' ({column_type.value})")
-        
+
         # Create and add the table
         table = Table(name=table_name, columns=columns, data=[])
         tables.add_table(table)
-        
+
         print(f"\n✓ Table '{table_name}' created successfully!")
         print("Columns:")
         for col in columns:
             pk_indicator = " (PRIMARY KEY)" if col.is_primary_key else ""
-            default_indicator = f" (default: {col.default})" if col.default is not None else ""
+            default_indicator = (
+                f" (default: {col.default})" if col.default is not None else ""
+            )
             print(f"  - {col.name}: {col.type.value}{pk_indicator}{default_indicator}")
-        
+
     except KeyboardInterrupt:
         print("\n\nTable creation cancelled.")
     except Exception as e:
@@ -139,7 +159,7 @@ def interactive_create_table(workdir: Path):
 
 def main():
     parser = ArgumentParser(description="Run SQL queries on JSON files.")
-    
+
     # Add top-level arguments for backward compatibility
     parser.add_argument("--code", type=str, help="SQL query to execute", default=None)
     parser.add_argument(
@@ -161,13 +181,15 @@ def main():
         choices=["json", "csv"],
         help="Output format (default: json)",
     )
-    
+
     # Add subcommands
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
-    
+
     # Query command
     query_parser = subparsers.add_parser("query", help="Run SQL queries")
-    query_parser.add_argument("--code", type=str, help="SQL query to execute", default=None)
+    query_parser.add_argument(
+        "--code", type=str, help="SQL query to execute", default=None
+    )
     query_parser.add_argument(
         "--workdir",
         type=Path,
@@ -187,16 +209,16 @@ def main():
         choices=["json", "csv"],
         help="Output format (default: json)",
     )
-    
+
     # Create table command
     create_parser = subparsers.add_parser("create", help="Create database objects")
-    create_subparsers = create_parser.add_subparsers(dest="create_command", help="Create commands")
-    
+    create_subparsers = create_parser.add_subparsers(
+        dest="create_command", help="Create commands"
+    )
+
     table_parser = create_subparsers.add_parser("table", help="Create a table")
     table_parser.add_argument(
-        "--interactive", 
-        action="store_true", 
-        help="Create table interactively"
+        "--interactive", action="store_true", help="Create table interactively"
     )
     table_parser.add_argument(
         "--workdir",
@@ -204,9 +226,9 @@ def main():
         default=Path.cwd(),
         help="Directory to create the table in",
     )
-    
+
     args = parser.parse_args()
-    
+
     # Handle commands
     if args.command == "create" and args.create_command == "table":
         if args.interactive:
@@ -246,7 +268,9 @@ def main():
         else:
             print("JSON SQL CLI")
             print("Type 'exit' to quit.")
-            print("Tip: Use 'abstra-json-sql create table --interactive' to create tables.")
+            print(
+                "Tip: Use 'abstra-json-sql create table --interactive' to create tables."
+            )
             while True:
                 try:
                     code = input("> ")
