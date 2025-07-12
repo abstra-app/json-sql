@@ -28,6 +28,19 @@ class ColumnType(Enum):
         else:
             return ColumnType.unknown
 
+    def to_dict(self) -> str:
+        return {
+            "type": self.value,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ColumnType":
+        """Create ColumnType from dictionary"""
+        if "type" in data:
+            return cls(data["type"])
+        else:
+            raise ValueError("Invalid data for ColumnType: missing 'type' key")
+
 
 class ForeignKey:
     def __init__(self, table: str, column: str):
@@ -47,14 +60,14 @@ class Column:
     def __init__(
         self,
         name: str,
-        type: ColumnType,
+        schema: ColumnType,
         is_primary_key: bool = False,
         foreign_key: Optional[ForeignKey] = None,
         default: Optional[Any] = None,
         column_id: str = None,
     ):
         self.name = name
-        self.type = type
+        self.schema = schema
         self.is_primary_key = is_primary_key
         self.foreign_key = foreign_key
         self.default = default
@@ -62,14 +75,14 @@ class Column:
 
     def __hash__(self):
         # Only hash based on name and type for backward compatibility
-        return hash((self.name, self.type, self.is_primary_key, self.foreign_key))
+        return hash((self.name, self.schema, self.is_primary_key, self.foreign_key))
 
     def __eq__(self, other):
         if not isinstance(other, Column):
             return False
         return (
             self.name == other.name
-            and self.type == other.type
+            and self.schema == other.schema
             and self.is_primary_key == other.is_primary_key
             and self.foreign_key == other.foreign_key
         )
@@ -79,7 +92,7 @@ class Column:
         result = {
             "id": self.column_id,
             "name": self.name,
-            "type": self.type.value if isinstance(self.type, ColumnType) else self.type,
+            "schema": self.schema.to_dict(),
             "is_primary_key": self.is_primary_key,
             "default": self.default,
         }
@@ -98,8 +111,8 @@ class Column:
         if "id" in col_dict:
             col_dict["column_id"] = col_dict.pop("id")
         # Convert type string back to ColumnType enum
-        if "type" in col_dict:
-            col_dict["type"] = ColumnType(col_dict["type"])
+        if "schema" in col_dict:
+            col_dict["schema"] = ColumnType.from_dict(col_dict["schema"])
         # Convert foreign_key dict back to ForeignKey object
         if "foreign_key" in col_dict and col_dict["foreign_key"] is not None:
             fk_data = col_dict.pop("foreign_key")

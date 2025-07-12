@@ -132,7 +132,7 @@ def interactive_create_table(workdir: Path):
             # Create column
             column = Column(
                 name=column_name,
-                type=column_type,
+                schema=column_type,
                 is_primary_key=is_primary_key,
                 default=default_value,
             )

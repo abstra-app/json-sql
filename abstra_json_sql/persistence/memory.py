@@ -123,7 +123,7 @@ class InMemoryTables(ITablesSnapshot):
         column = table.get_column(column_name)
         if column is None:
             raise ValueError(f"Column {column_name} not found in table {table_name}")
-        column.type = new_type
+        column.schema = new_type
 
     def insert(self, table: str, row: dict):
         table_obj = self._get_internal_table(table)

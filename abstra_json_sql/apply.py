@@ -748,7 +748,8 @@ def apply_with(with_clause: With, tables: ITablesSnapshot, ctx: dict):
             name=part.name,
             columns=[
                 Column(
-                    name=field_name(field), type=infer_expression(field.expression, ctx)
+                    name=field_name(field),
+                    schema=infer_expression(field.expression, ctx),
                 )
                 for field in part.command.field_parts
             ],

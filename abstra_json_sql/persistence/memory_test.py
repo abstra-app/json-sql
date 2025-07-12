@@ -43,9 +43,9 @@ class TestInMemoryTables:
         return Table(
             name="users",
             columns=[
-                Column(name="id", type=ColumnType.int, is_primary_key=True),
-                Column(name="name", type=ColumnType.string),
-                Column(name="age", type=ColumnType.int),
+                Column(name="id", schema=ColumnType.int, is_primary_key=True),
+                Column(name="name", schema=ColumnType.string),
+                Column(name="age", schema=ColumnType.int),
             ],
             data=[
                 {"id": 1, "name": "Alice", "age": 30},
@@ -101,7 +101,7 @@ class TestInMemoryTables:
 
     def test_add_column(self, tables, sample_table):
         tables.add_table(sample_table)
-        new_column = Column(name="email", type=ColumnType.string)
+        new_column = Column(name="email", schema=ColumnType.string)
         tables.add_column("users", new_column)
 
         table = tables.get_table("users")
@@ -110,7 +110,7 @@ class TestInMemoryTables:
 
     def test_add_duplicate_column(self, tables, sample_table):
         tables.add_table(sample_table)
-        duplicate_column = Column(name="name", type=ColumnType.string)
+        duplicate_column = Column(name="name", schema=ColumnType.string)
         with pytest.raises(ValueError, match="Column name already exists"):
             tables.add_column("users", duplicate_column)
 
@@ -128,7 +128,7 @@ class TestInMemoryTables:
 
         table = tables.get_table("users")
         age_col = table.get_column("age")
-        assert age_col.type == ColumnType.string
+        assert age_col.schema == ColumnType.string
 
     def test_insert(self, tables, sample_table):
         tables.add_table(sample_table)

@@ -96,7 +96,7 @@ class ExtendedTables(ITablesSnapshot):
             if table.name == table_name:
                 for col in table.columns:
                     if col.name == column_name:
-                        col.type = new_type
+                        col.schema = new_type
                         return
         self.snapshot.change_column_type(table_name, column_name, new_type)
 

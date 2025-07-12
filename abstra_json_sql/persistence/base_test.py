@@ -16,8 +16,8 @@ class FsTablesTest(TestCase):
         test_table = Table(
             name="test_table",
             columns=[
-                Column(name="id", type=ColumnType.int),
-                Column(name="name", type=ColumnType.string),
+                Column(name="id", schema=ColumnType.int),
+                Column(name="name", schema=ColumnType.string),
             ],
             data=[],
         )
@@ -30,8 +30,8 @@ class FsTablesTest(TestCase):
         test_table_l = Table(
             name="test_table",
             columns=[
-                Column(name="id", type=ColumnType.int),
-                Column(name="name", type=ColumnType.string),
+                Column(name="id", schema=ColumnType.int),
+                Column(name="name", schema=ColumnType.string),
             ],
             data=[],
         )

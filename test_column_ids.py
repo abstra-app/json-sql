@@ -26,9 +26,9 @@ def test_inmemory_tables_with_column_ids():
     print("=== Testing InMemoryTables with Column IDs ===")
 
     # Create columns with explicit IDs
-    col1 = Column(name="id", type=ColumnType.int, column_id="col_1")
-    col2 = Column(name="name", type=ColumnType.string, column_id="col_2")
-    col3 = Column(name="age", type=ColumnType.int, column_id="col_3")
+    col1 = Column(name="id", schema=ColumnType.int, column_id="col_1")
+    col2 = Column(name="name", schema=ColumnType.string, column_id="col_2")
+    col3 = Column(name="age", schema=ColumnType.int, column_id="col_3")
 
     # Create table
     table = Table(name="users", columns=[col1, col2, col3], data=[])
@@ -75,9 +75,9 @@ def test_filesystem_tables_with_column_ids():
         tables = FileSystemJsonTables(workdir)
 
         # Create columns with IDs
-        col1 = Column(name="product_id", type=ColumnType.int, column_id="p_id")
-        col2 = Column(name="product_name", type=ColumnType.string, column_id="p_name")
-        col3 = Column(name="price", type=ColumnType.float, column_id="p_price")
+        col1 = Column(name="product_id", schema=ColumnType.int, column_id="p_id")
+        col2 = Column(name="product_name", schema=ColumnType.string, column_id="p_name")
+        col3 = Column(name="price", schema=ColumnType.float, column_id="p_price")
 
         # Create and add table
         table = Table(
@@ -103,7 +103,7 @@ def test_filesystem_tables_with_column_ids():
             print("  Columns:")
             for col in table_info["columns"]:
                 print(
-                    f"    - ID: {col['id']}, Name: {col['name']}, Type: {col['type']}"
+                    f"    - ID: {col['id']}, Name: {col['name']}, Type: {col['schema']['type']}"
                 )
 
         # Check data file
@@ -150,8 +150,8 @@ def test_column_id_generation():
     print("\n=== Testing Column ID Generation ===")
 
     # Create columns without explicit IDs (should auto-generate)
-    col1 = Column(name="auto1", type=ColumnType.string)
-    col2 = Column(name="auto2", type=ColumnType.int)
+    col1 = Column(name="auto1", schema=ColumnType.string)
+    col2 = Column(name="auto2", schema=ColumnType.int)
 
     print("Auto-generated column IDs:")
     print(f"  Column 'auto1' ID: {col1.column_id}")

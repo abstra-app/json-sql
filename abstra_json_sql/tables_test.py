@@ -29,30 +29,30 @@ class TestColumnType:
 
 class TestColumn:
     def test_column_creation(self):
-        col = Column(name="id", type=ColumnType.int, is_primary_key=True)
+        col = Column(name="id", schema=ColumnType.int, is_primary_key=True)
         assert col.name == "id"
-        assert col.type == ColumnType.int
+        assert col.schema == ColumnType.int
         assert col.is_primary_key is True
         assert col.foreign_key is None
         assert col.default is None
 
     def test_column_with_foreign_key(self):
         fk = ForeignKey(table="users", column="id")
-        col = Column(name="user_id", type=ColumnType.int, foreign_key=fk)
+        col = Column(name="user_id", schema=ColumnType.int, foreign_key=fk)
         assert col.foreign_key.table == "users"
         assert col.foreign_key.column == "id"
 
     def test_column_hash(self):
-        col1 = Column(name="id", type=ColumnType.int)
-        col2 = Column(name="id", type=ColumnType.int)
+        col1 = Column(name="id", schema=ColumnType.int)
+        col2 = Column(name="id", schema=ColumnType.int)
         assert hash(col1) == hash(col2)
 
 
 class TestTable:
     def test_table_creation(self):
         columns = [
-            Column(name="id", type=ColumnType.int, is_primary_key=True),
-            Column(name="name", type=ColumnType.string),
+            Column(name="id", schema=ColumnType.int, is_primary_key=True),
+            Column(name="name", schema=ColumnType.string),
         ]
         table = Table(name="users", columns=columns)
         assert table.name == "users"
@@ -61,8 +61,8 @@ class TestTable:
 
     def test_get_column(self):
         columns = [
-            Column(name="id", type=ColumnType.int),
-            Column(name="name", type=ColumnType.string),
+            Column(name="id", schema=ColumnType.int),
+            Column(name="name", schema=ColumnType.string),
         ]
         table = Table(name="users", columns=columns)
 

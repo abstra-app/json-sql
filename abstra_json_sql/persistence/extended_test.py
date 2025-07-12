@@ -13,7 +13,7 @@ class TestExtendedTables:
     def extra_table(self):
         return Table(
             name="extra",
-            columns=[Column(name="id", type=ColumnType.int)],
+            columns=[Column(name="id", schema=ColumnType.int)],
             data=[{"id": 1}],
         )
 
@@ -24,7 +24,7 @@ class TestExtendedTables:
 
     def test_get_table_from_base(self, base_tables, extra_table):
         base_table = Table(
-            name="base", columns=[Column(name="id", type=ColumnType.int)], data=[]
+            name="base", columns=[Column(name="id", schema=ColumnType.int)], data=[]
         )
         base_tables.add_table(base_table)
 
@@ -46,7 +46,7 @@ class TestExtendedTables:
     def test_add_table(self, base_tables, extra_table):
         extended = ExtendedTables(base_tables, [extra_table])
         new_table = Table(
-            name="new", columns=[Column(name="id", type=ColumnType.int)], data=[]
+            name="new", columns=[Column(name="id", schema=ColumnType.int)], data=[]
         )
         extended.add_table(new_table)
 

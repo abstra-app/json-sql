@@ -90,7 +90,7 @@ class FileSystemJsonTables(ITablesSnapshot):
                 assert isinstance(row, dict), f"Row {row} is not a dictionary"
                 for key, value in row.items():
                     if key not in [col.name for col in columns_set]:
-                        col = Column(name=key, type=ColumnType.from_value(value))
+                        col = Column(name=key, schema=ColumnType.from_value(value))
                         columns_set.add(col)
             columns = list(columns_set)
             # Save inferred metadata
@@ -265,7 +265,7 @@ class FileSystemJsonTables(ITablesSnapshot):
         # Update metadata
         for col in columns:
             if col.name == column_name:
-                col.type = new_type
+                col.schema = new_type
                 break
         else:
             raise ValueError(f"Column {column_name} not found in table {table_name}")

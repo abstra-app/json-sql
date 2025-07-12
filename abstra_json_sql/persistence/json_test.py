@@ -41,9 +41,9 @@ class TestFileSystemJsonTables:
         return Table(
             name="users",
             columns=[
-                Column(name="id", type=ColumnType.int, is_primary_key=True),
-                Column(name="name", type=ColumnType.string),
-                Column(name="age", type=ColumnType.int),
+                Column(name="id", schema=ColumnType.int, is_primary_key=True),
+                Column(name="name", schema=ColumnType.string),
+                Column(name="age", schema=ColumnType.int),
             ],
             data=[
                 {"id": 1, "name": "Alice", "age": 30},
@@ -118,7 +118,7 @@ class TestFileSystemJsonTables:
     def test_add_column(self, tables, sample_table):
         tables.add_table(sample_table)
         new_column = Column(
-            name="email", type=ColumnType.string, default="test@example.com"
+            name="email", schema=ColumnType.string, default="test@example.com"
         )
         tables.add_column("users", new_column)
 
@@ -154,7 +154,7 @@ class TestFileSystemJsonTables:
 
         table = tables.get_table("users")
         age_col = table.get_column("age")
-        assert age_col.type == ColumnType.string
+        assert age_col.schema == ColumnType.string
 
     def test_insert(self, tables, sample_table):
         tables.add_table(sample_table)
@@ -194,8 +194,8 @@ def test_new_uuid_implementation():
         table = Table(
             name="users",
             columns=[
-                Column(name="id", type=ColumnType.int, is_primary_key=True),
-                Column(name="name", type=ColumnType.string),
+                Column(name="id", schema=ColumnType.int, is_primary_key=True),
+                Column(name="name", schema=ColumnType.string),
             ],
             data=[
                 {"id": 1, "name": "Alice"},
@@ -249,8 +249,8 @@ def test_uuid_file_names_and_rename():
         table = Table(
             name="users",
             columns=[
-                Column(name="id", type=ColumnType.int, is_primary_key=True),
-                Column(name="name", type=ColumnType.string),
+                Column(name="id", schema=ColumnType.int, is_primary_key=True),
+                Column(name="name", schema=ColumnType.string),
             ],
             data=[
                 {"id": 1, "name": "Alice"},
