@@ -1,5 +1,5 @@
 from pathlib import Path
-from .tables import FileSystemJsonTables
+from .tables import FileSystemJsonLTables
 from .eval import eval_sql
 from argparse import ArgumentParser
 from csv import DictWriter
@@ -9,7 +9,7 @@ from json import dumps
 
 
 def query(code: str, workdir: Path, ctx: dict):
-    tables = FileSystemJsonTables(workdir=workdir)
+    tables = FileSystemJsonLTables(workdir=workdir)
     result = eval_sql(code=code, tables=tables, ctx=ctx)
     return result
 

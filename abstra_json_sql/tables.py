@@ -675,6 +675,7 @@ class FileSystemJsonLTables(ITablesSnapshot):
     def _ensure_metadata_table(self):
         """Ensure the metadata table exists"""
         metadata_path = self.workdir / "__schema__.jsonl"
+        self.workdir.mkdir(parents=True, exist_ok=True)
         if not metadata_path.exists():
             metadata_path.write_text("")
 
