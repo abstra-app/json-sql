@@ -267,9 +267,9 @@ def apply_expression(expression: Expression, ctx: dict):
                     )
                 )
             elif expression.name.lower() == "bool_or":
-                assert (
-                    len(expression.args) == 1
-                ), "Bool_or function requires one argument"
+                assert len(expression.args) == 1, (
+                    "Bool_or function requires one argument"
+                )
                 return any(
                     apply_expression(expression.args[0], {**ctx, **row})
                     for row in ctx["__grouped_rows"]
@@ -279,9 +279,9 @@ def apply_expression(expression: Expression, ctx: dict):
                     )
                 )
             elif expression.name.lower() == "bool_and":
-                assert (
-                    len(expression.args) == 1
-                ), "Bool_and function requires one argument"
+                assert len(expression.args) == 1, (
+                    "Bool_and function requires one argument"
+                )
                 return all(
                     apply_expression(expression.args[0], {**ctx, **row})
                     for row in ctx["__grouped_rows"]
@@ -291,9 +291,9 @@ def apply_expression(expression: Expression, ctx: dict):
                     )
                 )
             elif expression.name.lower() == "bit_or":
-                assert (
-                    len(expression.args) == 1
-                ), "Bit_or function requires one argument"
+                assert len(expression.args) == 1, (
+                    "Bit_or function requires one argument"
+                )
                 not_null_rows = [
                     row
                     for row in ctx["__grouped_rows"]
@@ -309,9 +309,9 @@ def apply_expression(expression: Expression, ctx: dict):
                     result_bits |= apply_expression(expression.args[0], {**ctx, **row})
                 return result_bits
             elif expression.name.lower() == "bit_and":
-                assert (
-                    len(expression.args) == 1
-                ), "Bit_and function requires one argument"
+                assert len(expression.args) == 1, (
+                    "Bit_and function requires one argument"
+                )
                 not_null_rows = [
                     row
                     for row in ctx["__grouped_rows"]
@@ -327,17 +327,17 @@ def apply_expression(expression: Expression, ctx: dict):
                     result_bits &= apply_expression(expression.args[0], {**ctx, **row})
                 return result_bits
             elif expression.name.lower() == "array_agg":
-                assert (
-                    len(expression.args) == 1
-                ), "Array_agg function requires one argument"
+                assert len(expression.args) == 1, (
+                    "Array_agg function requires one argument"
+                )
                 return [
                     apply_expression(expression.args[0], {**ctx, **row})
                     for row in ctx["__grouped_rows"]
                 ]
             elif expression.name.lower() == "string_agg":
-                assert (
-                    len(expression.args) == 2
-                ), "String_agg function requires two arguments"
+                assert len(expression.args) == 2, (
+                    "String_agg function requires two arguments"
+                )
                 separator = apply_expression(expression.args[1], ctx)
                 return separator.join(
                     str(apply_expression(expression.args[0], {**ctx, **row}))
@@ -350,14 +350,14 @@ def apply_expression(expression: Expression, ctx: dict):
         else:
             args = [apply_expression(arg, ctx) for arg in expression.args]
             if expression.name == "lower":
-                assert isinstance(
-                    args[0], str
-                ), "lower function requires a string argument"
+                assert isinstance(args[0], str), (
+                    "lower function requires a string argument"
+                )
                 return args[0].lower()
             elif expression.name == "upper":
-                assert isinstance(
-                    args[0], str
-                ), "upper function requires a string argument"
+                assert isinstance(args[0], str), (
+                    "upper function requires a string argument"
+                )
                 return args[0].upper()
             else:
                 raise ValueError(f"Unknown function: {expression.name}")

@@ -3,6 +3,20 @@ from ..tables import ITablesSnapshot, Table, Column, ColumnType
 
 
 class InMemoryTables(ITablesSnapshot):
+    def _update(self, table: str, idx: int, changes: dict):
+        table_obj = self._get_internal_table(table)
+        if table_obj is None:
+            raise ValueError(f"Table {table} not found")
+        # Convert changes from column names to column IDs
+        changes_with_ids = table_obj.convert_row_to_column_ids(changes)
+        table_obj.data[idx].update(changes_with_ids)
+
+    def _delete(self, table: str, idxs: List[int]):
+        table_obj = self._get_internal_table(table)
+        if table_obj is None:
+            raise ValueError(f"Table {table} not found")
+        table_obj.data = [row for i, row in enumerate(table_obj.data) if i not in idxs]
+
     def __init__(self, tables: List[Table] = None):
         if tables is None:
             self.tables = []
@@ -125,7 +139,7 @@ class InMemoryTables(ITablesSnapshot):
             raise ValueError(f"Column {column_name} not found in table {table_name}")
         column.schema = new_type
 
-    def insert(self, table: str, row: dict):
+    def _insert(self, table: str, row: dict):
         table_obj = self._get_internal_table(table)
         if table_obj is None:
             raise ValueError(f"Table {table} not found")

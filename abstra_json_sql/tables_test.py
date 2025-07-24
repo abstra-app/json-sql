@@ -5,6 +5,8 @@ from .tables import (
     Table,
     ForeignKey,
 )
+from .persistence import InMemoryTables
+from unittest import TestCase
 
 
 class TestColumnType:
@@ -72,6 +74,61 @@ class TestTable:
 
         col = table.get_column("nonexistent")
         assert col is None
+
+
+class TestFrom(TestCase):
+    def test_from_pydantic_base_model(self):
+        from pydantic import BaseModel, Field
+
+        class UserModel(BaseModel):
+            id: int = Field(..., primary_key=True)
+            name: str
+
+        table = Table.from_pydantic_base_model(UserModel)
+        assert table.name == "user_model"
+        assert len(table.columns) == 2
+        assert table.columns[0].name == "id"
+        assert table.columns[0].is_primary_key is True
+        assert table.columns[1].name == "name"
+
+    def test_from_pydantic_base_model_with_table_name(self):
+        from pydantic import BaseModel, Field
+
+        class UserModel(BaseModel):
+            id: int = Field(..., primary_key=True)
+            name: str
+
+        table = Table.from_pydantic_base_model(UserModel, table_name="custom_table")
+        assert table.name == "custom_table"
+        assert len(table.columns) == 2
+        assert table.columns[0].name == "id"
+        assert table.columns[0].is_primary_key is True
+        assert table.columns[1].name == "name"
+
+    def test_in_memory_from_pydantic_base_models(self):
+        from pydantic import BaseModel, Field
+
+        class UserModel(BaseModel):
+            id: int = Field(..., primary_key=True)
+            name: str
+
+        class ProductModel(BaseModel):
+            id: int = Field(..., primary_key=True)
+            title: str
+
+        snapshot = InMemoryTables.from_pydantic_base_models([UserModel, ProductModel])
+        assert len(snapshot.tables) == 2
+        assert snapshot.tables[0].name == "user_model"
+        assert snapshot.tables[1].name == "product_model"
+
+        snapshot.insert("user_model", {"id": 1, "name": "Alice"})
+
+        with self.assertRaises(ValueError):
+            snapshot.insert("nonexistent_table", {"id": 1, "name": "Alice"})
+
+        user2 = UserModel(id=2, name="Bob")
+        snapshot.insert("user_model", user2)
+        assert len(snapshot.get_table("user_model").data) == 2
 
 
 if __name__ == "__main__":

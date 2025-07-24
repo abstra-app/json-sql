@@ -100,7 +100,7 @@ class ExtendedTables(ITablesSnapshot):
                         return
         self.snapshot.change_column_type(table_name, column_name, new_type)
 
-    def insert(self, table_name: str, row: dict):
+    def _insert(self, table_name: str, row: dict):
         for table in self.extra_tables:
             if table.name == table_name:
                 # Convert row from column names to column IDs
@@ -109,7 +109,7 @@ class ExtendedTables(ITablesSnapshot):
                 return
         self.snapshot.insert(table_name, row)
 
-    def update(self, table_name, idx, changes):
+    def _update(self, table_name, idx, changes):
         for table in self.extra_tables:
             if table.name == table_name:
                 # Convert changes from column names to column IDs
@@ -118,7 +118,7 @@ class ExtendedTables(ITablesSnapshot):
                 return
         self.snapshot.update(table_name, idx, changes)
 
-    def delete(self, table_name: str, idxs: List[int]):
+    def _delete(self, table_name: str, idxs: List[int]):
         for table in self.extra_tables:
             if table.name == table_name:
                 # Sort indices in descending order to avoid index shifting

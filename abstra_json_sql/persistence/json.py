@@ -152,7 +152,7 @@ class FileSystemJsonTables(ITablesSnapshot):
         # Update metadata with new name
         self._save_table_metadata(table_id, new_name, columns)
 
-    def insert(self, table_name: str, row: dict):
+    def _insert(self, table_name: str, row: dict):
         table_id, columns = self._get_table_metadata_by_name(table_name)
         if table_id is None:
             raise ValueError(f"Table {table_name} not found")
@@ -165,9 +165,9 @@ class FileSystemJsonTables(ITablesSnapshot):
         temp_table = Table(name=table_name, columns=columns, data=[], table_id=table_id)
 
         rows = json.loads(table_path.read_text())
-        assert isinstance(
-            rows, list
-        ), f"File {table_path} does not contain a list of rows"
+        assert isinstance(rows, list), (
+            f"File {table_path} does not contain a list of rows"
+        )
 
         # Convert row to column ID format
         row_with_ids = temp_table.convert_row_to_column_ids(row)
@@ -184,9 +184,9 @@ class FileSystemJsonTables(ITablesSnapshot):
             raise FileNotFoundError(f"File {table_path} does not exist")
 
         rows = json.loads(table_path.read_text())
-        assert isinstance(
-            rows, list
-        ), f"File {table_path} does not contain a list of rows"
+        assert isinstance(rows, list), (
+            f"File {table_path} does not contain a list of rows"
+        )
 
         # Check if column already exists
         if any(col.name == column.name for col in existing_columns):
@@ -213,9 +213,9 @@ class FileSystemJsonTables(ITablesSnapshot):
             raise FileNotFoundError(f"File {table_path} does not exist")
 
         rows = json.loads(table_path.read_text())
-        assert isinstance(
-            rows, list
-        ), f"File {table_path} does not contain a list of rows"
+        assert isinstance(rows, list), (
+            f"File {table_path} does not contain a list of rows"
+        )
 
         # Remove column from data using column ID
         column_to_remove = None
@@ -244,9 +244,9 @@ class FileSystemJsonTables(ITablesSnapshot):
             raise FileNotFoundError(f"File {table_path} does not exist")
 
         rows = json.loads(table_path.read_text())
-        assert isinstance(
-            rows, list
-        ), f"File {table_path} does not contain a list of rows"
+        assert isinstance(rows, list), (
+            f"File {table_path} does not contain a list of rows"
+        )
 
         # Data doesn't need to change for rename_column since we use column IDs
         # Only metadata needs to be updated
@@ -271,7 +271,7 @@ class FileSystemJsonTables(ITablesSnapshot):
             raise ValueError(f"Column {column_name} not found in table {table_name}")
         self._save_table_metadata(table_id, table_name, columns)
 
-    def update(self, table_name: str, idx: int, changes: dict):
+    def _update(self, table_name: str, idx: int, changes: dict):
         table_id, columns = self._get_table_metadata_by_name(table_name)
         if table_id is None:
             raise ValueError(f"Table {table_name} not found")
@@ -284,9 +284,9 @@ class FileSystemJsonTables(ITablesSnapshot):
         temp_table = Table(name=table_name, columns=columns, data=[], table_id=table_id)
 
         rows = json.loads(table_path.read_text())
-        assert isinstance(
-            rows, list
-        ), f"File {table_path} does not contain a list of rows"
+        assert isinstance(rows, list), (
+            f"File {table_path} does not contain a list of rows"
+        )
         if idx < 0 or idx >= len(rows):
             raise IndexError(f"Index {idx} out of range for table {table_name}")
 
@@ -295,7 +295,7 @@ class FileSystemJsonTables(ITablesSnapshot):
         rows[idx].update(changes_with_ids)
         table_path.write_text(json.dumps(rows, indent=2))
 
-    def delete(self, table_name: str, idxs: List[int]):
+    def _delete(self, table_name: str, idxs: List[int]):
         table_id, _ = self._get_table_metadata_by_name(table_name)
         if table_id is None:
             raise ValueError(f"Table {table_name} not found")
@@ -305,9 +305,9 @@ class FileSystemJsonTables(ITablesSnapshot):
             raise FileNotFoundError(f"File {table_path} does not exist")
 
         rows = json.loads(table_path.read_text())
-        assert isinstance(
-            rows, list
-        ), f"File {table_path} does not contain a list of rows"
+        assert isinstance(rows, list), (
+            f"File {table_path} does not contain a list of rows"
+        )
 
         # Sort indices in descending order to avoid index shifting
         for idx in sorted(idxs, reverse=True):

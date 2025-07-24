@@ -435,9 +435,9 @@ def parse_fields(tokens: List[Token]) -> Tuple[List[SelectField], List[Token]]:
             ):
                 tokens = tokens[1:]
                 alias_token = tokens[0]
-                assert (
-                    alias_token.type == "name"
-                ), f"Expected alias name, got {alias_token}"
+                assert alias_token.type == "name", (
+                    f"Expected alias name, got {alias_token}"
+                )
                 field.alias = alias_token.value
                 tokens = tokens[1:]
             fields.append(field)
@@ -668,9 +668,9 @@ def parse_update(tokens: List[Token]) -> Tuple[Ast, List[Token]]:
     else:
         table_alias = None
 
-    assert (
-        tokens[0].type == "keyword" and tokens[0].value.upper() == "SET"
-    ), f"Expecting SET assignments, got '{tokens[0].value}'"
+    assert tokens[0].type == "keyword" and tokens[0].value.upper() == "SET", (
+        f"Expecting SET assignments, got '{tokens[0].value}'"
+    )
     tokens = tokens[1:]
 
     changes = []
@@ -754,9 +754,9 @@ def parse_with(tokens: List[Token]) -> Tuple[Optional[Ast], List[Token]]:
         tokens = tokens[1:]
 
         as_token = tokens[0]
-        assert (
-            as_token.type == "keyword" and as_token.value.upper() == "AS"
-        ), f"Expected AS, got {as_token}"
+        assert as_token.type == "keyword" and as_token.value.upper() == "AS", (
+            f"Expected AS, got {as_token}"
+        )
         tokens = tokens[1:]
 
         cmd, tokens = parse_expression(tokens)

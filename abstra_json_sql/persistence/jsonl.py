@@ -296,7 +296,7 @@ class FileSystemJsonLTables(ITablesSnapshot):
             raise ValueError(f"Column {column_name} not found in table {table_name}")
         self._save_table_metadata(table_id, table_name, columns)
 
-    def insert(self, table_name: str, row: dict):
+    def _insert(self, table_name: str, row: dict):
         table_id, columns = self._get_table_metadata_by_name(table_name)
         if table_id is None:
             raise ValueError(f"Table {table_name} not found")
@@ -310,7 +310,7 @@ class FileSystemJsonLTables(ITablesSnapshot):
             row_with_ids = temp_table.convert_row_to_column_ids(row)
             f.write(json.dumps(row_with_ids) + "\n")
 
-    def update(self, table_name: str, idx: int, changes: dict):
+    def _update(self, table_name: str, idx: int, changes: dict):
         table_id, columns = self._get_table_metadata_by_name(table_name)
         if table_id is None:
             raise ValueError(f"Table {table_name} not found")
@@ -340,7 +340,7 @@ class FileSystemJsonLTables(ITablesSnapshot):
             for row in rows:
                 f.write(json.dumps(row) + "\n")
 
-    def delete(self, table_name: str, idxs: List[int]):
+    def _delete(self, table_name: str, idxs: List[int]):
         table_id, _ = self._get_table_metadata_by_name(table_name)
         if table_id is None:
             raise ValueError(f"Table {table_name} not found")

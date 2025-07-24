@@ -1,7 +1,11 @@
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Type, TYPE_CHECKING
 from abc import ABC, abstractmethod
 from enum import Enum
+from .string_utils import snake_case
 import uuid
+
+if TYPE_CHECKING:
+    from pydantic import BaseModel
 
 
 class ColumnType(Enum):
@@ -119,6 +123,22 @@ class Column:
             col_dict["foreign_key"] = ForeignKey(fk_data["table"], fk_data["column"])
         return cls(**col_dict)
 
+    @classmethod
+    def from_pydantic_field(cls, name: str, field) -> "Column":
+        """Create Column object from Pydantic field (Pydantic v2 compatible)"""
+        pk = False
+        fk = None
+        if hasattr(field, "json_schema_extra") and field.json_schema_extra:
+            pk = field.json_schema_extra.get("primary_key", False)
+            fk = field.json_schema_extra.get("foreign_key")
+        return cls(
+            name=snake_case(name),
+            schema=ColumnType.from_value(field.annotation),
+            is_primary_key=pk,
+            foreign_key=fk,
+            default=field.default,
+        )
+
 
 class Table:
     def __init__(
@@ -169,6 +189,21 @@ class Table:
                 result[col_id] = value
         return result
 
+    @classmethod
+    def from_pydantic_base_model(
+        cls, model: Type["BaseModel"], table_name: str = None
+    ) -> "Table":
+        """Create Table object from Pydantic BaseModel"""
+        name = table_name if table_name is not None else snake_case(model.__name__)
+        return cls(
+            name=name,
+            columns=[
+                Column.from_pydantic_field(name, field)
+                for name, field in model.model_fields.items()
+            ],
+            table_id=str(uuid.uuid4()),
+        )
+
 
 class ITablesSnapshot(ABC):
     @abstractmethod
@@ -205,17 +240,51 @@ class ITablesSnapshot(ABC):
     ):
         raise NotImplementedError("change_column_type method must be implemented")
 
-    @abstractmethod
     def insert(self, table_name: str, row: dict):
-        raise NotImplementedError("insert method must be implemented")
+        # Adapt Pydantic BaseModel to dict if needed
+        try:
+            from pydantic import BaseModel
+        except ImportError:
+            BaseModel = None
+        if BaseModel is not None and isinstance(row, BaseModel):
+            row = row.model_dump()
+        return self._insert(table_name, row)
 
     @abstractmethod
+    def _insert(self, table_name: str, row: dict):
+        raise NotImplementedError("_insert method must be implemented")
+
     def update(self, table_name: str, idx: int, changes: dict):
-        raise NotImplementedError("update method must be implemented")
+        # Adapt Pydantic BaseModel to dict if needed
+        try:
+            from pydantic import BaseModel
+        except ImportError:
+            BaseModel = None
+        if BaseModel is not None and isinstance(changes, BaseModel):
+            changes = changes.model_dump()
+        return self._update(table_name, idx, changes)
 
     @abstractmethod
+    def _update(self, table_name: str, idx: int, changes: dict):
+        raise NotImplementedError("_update method must be implemented")
+
     def delete(self, table_name: str, idxs: List[int]):
-        raise NotImplementedError("delete method must be implemented")
+        return self._delete(table_name, idxs)
+
+    @abstractmethod
+    def _delete(self, table_name: str, idxs: List[int]):
+        raise NotImplementedError("_delete method must be implemented")
+
+    @classmethod
+    def from_pydantic_base_models(
+        cls, models: List[Type["BaseModel"]], table_name: str = None
+    ) -> "ITablesSnapshot":
+        """Create ITablesSnapshot from a list of Pydantic BaseModels"""
+        tables = [Table.from_pydantic_base_model(model, table_name) for model in models]
+        snapshot = cls()
+        for table in tables:
+            snapshot.add_table(table)
+        return snapshot
 
 
 __all__ = [
