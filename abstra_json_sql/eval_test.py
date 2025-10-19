@@ -1034,3 +1034,219 @@ class TestEvalSQL(TestCase):
         result = eval_sql(code=code, tables=tables, ctx=ctx)
         self.assertIsNone(result)
         self.assertEqual(tables.get_table("foo").data, [])
+
+    def test_reserved_keyword_as_column_name_select(self):
+        """Test that SQL reserved keywords can be used as column names with quotes"""
+        code = 'select "select", "update", "where" from data'
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="data",
+                    columns=[
+                        Column(name="select", schema=ColumnType.string),
+                        Column(name="update", schema=ColumnType.string),
+                        Column(name="where", schema=ColumnType.string),
+                    ],
+                    data=[
+                        {"select": "val1", "update": "val2", "where": "val3"},
+                        {"select": "val4", "update": "val5", "where": "val6"},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result,
+            [
+                {"select": "val1", "update": "val2", "where": "val3"},
+                {"select": "val4", "update": "val5", "where": "val6"},
+            ],
+        )
+
+    def test_reserved_keyword_as_column_name_insert(self):
+        """Test INSERT with reserved keywords as column names"""
+        code = "insert into data (\"select\", \"update\", \"where\") values ('a', 'b', 'c')"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="data",
+                    columns=[
+                        Column(name="select", schema=ColumnType.string),
+                        Column(name="update", schema=ColumnType.string),
+                        Column(name="where", schema=ColumnType.string),
+                    ],
+                    data=[],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertIsNone(result)
+        self.assertEqual(
+            tables.get_table("data").data,
+            [{"select": "a", "update": "b", "where": "c"}],
+        )
+
+    def test_reserved_keyword_as_column_name_update(self):
+        """Test UPDATE with reserved keywords as column names"""
+        code = "update data set \"update\" = 'new_value' where \"select\" = 'a'"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="data",
+                    columns=[
+                        Column(name="select", schema=ColumnType.string),
+                        Column(name="update", schema=ColumnType.string),
+                    ],
+                    data=[
+                        {"select": "a", "update": "old"},
+                        {"select": "b", "update": "keep"},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertIsNone(result)
+        self.assertEqual(
+            tables.get_table("data").data,
+            [
+                {"select": "a", "update": "new_value"},
+                {"select": "b", "update": "keep"},
+            ],
+        )
+
+    def test_reserved_keyword_as_column_name_where(self):
+        """Test WHERE clause with reserved keywords as column names"""
+        code = "select * from data where \"select\" = 'test'"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="data",
+                    columns=[
+                        Column(name="select", schema=ColumnType.string),
+                        Column(name="id", schema="int"),
+                    ],
+                    data=[
+                        {"id": 1, "select": "test"},
+                        {"id": 2, "select": "other"},
+                        {"id": 3, "select": "test"},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result,
+            [
+                {"id": 1, "select": "test"},
+                {"id": 3, "select": "test"},
+            ],
+        )
+
+    def test_reserved_keyword_without_quotes_should_fail(self):
+        """Test that reserved keywords without quotes should fail during parsing"""
+        code = "insert into data (select, update, where) values ('a', 'b', 'c')"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="data",
+                    columns=[
+                        Column(name="select", schema=ColumnType.string),
+                        Column(name="update", schema=ColumnType.string),
+                        Column(name="where", schema=ColumnType.string),
+                    ],
+                    data=[],
+                )
+            ],
+        )
+        ctx = {}
+        # Should raise an assertion error because parser expects column name but gets keyword
+        with self.assertRaises(AssertionError):
+            eval_sql(code=code, tables=tables, ctx=ctx)
+
+    def test_where_clause_with_column_reference(self):
+        """Test WHERE clause can properly resolve column names from table data"""
+        code = "select * from users where id = 'user_123'"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="users",
+                    columns=[
+                        Column(name="id", schema=ColumnType.string),
+                        Column(name="name", schema=ColumnType.string),
+                    ],
+                    data=[
+                        {"id": "user_123", "name": "Alice"},
+                        {"id": "user_456", "name": "Bob"},
+                        {"id": "user_789", "name": "Charlie"},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(result, [{"id": "user_123", "name": "Alice"}])
+
+    def test_where_clause_with_multiple_conditions(self):
+        """Test WHERE clause with multiple column references using AND"""
+        code = "select * from products where price > 10 and stock > 0"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="products",
+                    columns=[
+                        Column(name="id", schema="int"),
+                        Column(name="price", schema="int"),
+                        Column(name="stock", schema="int"),
+                    ],
+                    data=[
+                        {"id": 1, "price": 5, "stock": 10},
+                        {"id": 2, "price": 15, "stock": 5},
+                        {"id": 3, "price": 20, "stock": 0},
+                        {"id": 4, "price": 12, "stock": 3},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result,
+            [
+                {"id": 2, "price": 15, "stock": 5},
+                {"id": 4, "price": 12, "stock": 3},
+            ],
+        )
+
+    def test_where_clause_column_comparison(self):
+        """Test WHERE clause comparing two columns"""
+        code = "select * from inventory where quantity < min_quantity"
+        tables = InMemoryTables(
+            tables=[
+                Table(
+                    name="inventory",
+                    columns=[
+                        Column(name="item", schema=ColumnType.string),
+                        Column(name="quantity", schema="int"),
+                        Column(name="min_quantity", schema="int"),
+                    ],
+                    data=[
+                        {"item": "A", "quantity": 5, "min_quantity": 10},
+                        {"item": "B", "quantity": 20, "min_quantity": 15},
+                        {"item": "C", "quantity": 3, "min_quantity": 5},
+                    ],
+                )
+            ],
+        )
+        ctx = {}
+        result = eval_sql(code=code, tables=tables, ctx=ctx)
+        self.assertEqual(
+            result,
+            [
+                {"item": "A", "quantity": 5, "min_quantity": 10},
+                {"item": "C", "quantity": 3, "min_quantity": 5},
+            ],
+        )

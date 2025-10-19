@@ -51,14 +51,27 @@ def extract_name(code: str):
 def start_with_keyword(code: str):
     for keyword in keywords:
         if code.upper().startswith(keyword.upper()):
-            return True
+            # Check if keyword is followed by a non-alphanumeric character
+            # This ensures we don't match "IN" in "INventory"
+            next_idx = len(keyword)
+            if next_idx >= len(code):
+                return True
+            next_char = code[next_idx]
+            if not (next_char.isalnum() or next_char == "_" or next_char == "."):
+                return True
     return False
 
 
 def extract_keyword(code: str):
     for keyword in keywords:
         if code.upper().startswith(keyword.upper()):
-            return Token("keyword", code[: len(keyword)]), code[len(keyword) :]
+            # Check if keyword is followed by a non-alphanumeric character
+            next_idx = len(keyword)
+            if next_idx >= len(code):
+                return Token("keyword", code[: len(keyword)]), code[len(keyword) :]
+            next_char = code[next_idx]
+            if not (next_char.isalnum() or next_char == "_" or next_char == "."):
+                return Token("keyword", code[: len(keyword)]), code[len(keyword) :]
 
 
 def start_with_quoted_name(code: str):
