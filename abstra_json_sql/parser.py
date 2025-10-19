@@ -82,171 +82,172 @@ def parse_order(tokens: List[Token]) -> Tuple[OrderBy, List[Token]]:
     return OrderBy(fields=order_fields), tokens
 
 
-def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
-    stack = []
+def parse_primary_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
+    """Parse a primary expression (literals, names, function calls, parentheses)"""
+    if not tokens:
+        raise ValueError("Expected expression")
 
-    while tokens:
-        if tokens[0].type == "paren_left":
-            tokens = tokens[1:]
-
-            if tokens[0].value.upper() in [
-                "SELECT",
-                "WITH",
-                "INSERT",
-                "UPDATE",
-                "DELETE",
-            ]:
-                subquery, tokens = parse_command(tokens)
-                stack.append(subquery)
-            else:
-                expression, tokens = parse_expression(tokens)
-                stack.append(expression)
+    if tokens[0].type == "paren_left":
+        tokens = tokens[1:]
+        if tokens[0].value.upper() in ["SELECT", "WITH", "INSERT", "UPDATE", "DELETE"]:
+            subquery, tokens = parse_command(tokens)
             if tokens and tokens[0].type == "paren_right":
                 tokens = tokens[1:]
-                break
             else:
                 raise ValueError("Expected closing parenthesis")
-        elif tokens[0].type == "paren_right":
-            break
-        elif tokens[0].type == "keyword":
-            if tokens[0].value.upper() == "AND":
-                tokens = tokens[1:]
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(AndExpression(left=left, right=right))
-            elif tokens[0].value.upper() == "OR":
-                tokens = tokens[1:]
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(OrExpression(left=left, right=right))
-            elif tokens[0].value.upper() == "NOT":
-                tokens = tokens[1:]
-                expression, tokens = parse_expression(tokens)
-                stack.append(NotExpression(expression=expression))
-            elif tokens[0].value.upper() == "TRUE":
-                tokens = tokens[1:]
-                stack.append(TrueExpression())
-            elif tokens[0].value.upper() == "FALSE":
-                tokens = tokens[1:]
-                stack.append(FalseExpression())
-            elif tokens[0].value.upper() == "IS":
-                tokens = tokens[1:]
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(IsExpression(left=left, right=right, is_not=False))
-            elif tokens[0].value.upper() == "IS NOT":
-                tokens = tokens[1:]
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(IsExpression(left=left, right=right, is_not=True))
-            elif tokens[0].value.upper() == "NULL":
-                tokens = tokens[1:]
-                stack.append(NullExpression())
-            else:
-                break
-        elif tokens[0].type == "int":
-            stack.append(IntExpression(value=int(tokens[0].value)))
-            tokens = tokens[1:]
-        elif tokens[0].type == "float":
-            stack.append(FloatExpression(value=float(tokens[0].value)))
-            tokens = tokens[1:]
-        elif tokens[0].type == "str":
-            stack.append(StringExpression(value=tokens[0].value))
-            tokens = tokens[1:]
-        elif tokens[0].type == "name":
-            name_value = tokens[0].value
-            tokens = tokens[1:]
-
-            if not tokens or tokens[0].type != "paren_left":
-                stack.append(NameExpression(name=name_value))
-                continue
-            else:
-                if (
-                    name_value.lower() == "count"
-                    and tokens[1].type == "wildcard"
-                    and tokens[2].type == "paren_right"
-                ):
-                    tokens = tokens[3:]
-                    stack.append(
-                        FunctionCallExpression(name="count", args=[Wildcard()])
-                    )
-                else:
-                    tokens = tokens[1:]
-                    args = []
-                    while True:
-                        param_expression, tokens = parse_expression(tokens)
-                        args.append(param_expression)
-                        if tokens[0].type == "comma":
-                            tokens = tokens[1:]
-                            continue
-                        elif tokens[0].type == "paren_right":
-                            tokens = tokens[1:]
-                            break
-                        else:
-                            raise ValueError("Expected comma or closing parenthesis")
-
-                    stack.append(FunctionCallExpression(name=name_value, args=args))
-            continue
-        elif tokens[0].type == "operator":
-            operator = tokens[0].value
-            if operator == "+":
-                tokens = tokens[1:]
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(PlusExpression(left=left, right=right))
-            elif operator == "-":
-                tokens = tokens[1:]
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(MinusExpression(left=left, right=right))
-            elif operator == "*":
-                tokens = tokens[1:]
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(MultiplyExpression(left=left, right=right))
-            elif operator == "/":
-                tokens = tokens[1:]
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(DivideExpression(left=left, right=right))
-            elif operator == "=":
-                tokens = tokens[1:]
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(EqualExpression(left=left, right=right))
-            elif operator == "<":
-                tokens = tokens[1:]
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(LessThanExpression(left=left, right=right))
-            elif operator == "<=":
-                tokens = tokens[1:]
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(LessThanOrEqualExpression(left=left, right=right))
-            elif operator == ">":
-                tokens = tokens[1:]
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(GreaterThanExpression(left=left, right=right))
-            elif operator == ">=":
-                tokens = tokens[1:]
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(GreaterThanOrEqualExpression(left=left, right=right))
-            elif operator == "!=" or operator == "<>":
-                tokens = tokens[1:]
-                left = stack.pop()
-                right, tokens = parse_expression(tokens)
-                stack.append(NotEqualExpression(left=left, right=right))
-            else:
-                raise ValueError(f"Unknown operator: {operator}")
+            return subquery, tokens
         else:
-            break
-    if len(stack) == 1:
-        return stack[0], tokens
+            expression, tokens = parse_expression(tokens)
+            if tokens and tokens[0].type == "paren_right":
+                tokens = tokens[1:]
+            else:
+                raise ValueError("Expected closing parenthesis")
+            return expression, tokens
+    elif tokens[0].type == "int":
+        return IntExpression(value=int(tokens[0].value)), tokens[1:]
+    elif tokens[0].type == "float":
+        return FloatExpression(value=float(tokens[0].value)), tokens[1:]
+    elif tokens[0].type == "str":
+        return StringExpression(value=tokens[0].value), tokens[1:]
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() == "NOT":
+        tokens = tokens[1:]
+        expression, tokens = parse_expression(tokens)
+        return NotExpression(expression=expression), tokens
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() == "TRUE":
+        return TrueExpression(), tokens[1:]
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() == "FALSE":
+        return FalseExpression(), tokens[1:]
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() == "NULL":
+        return NullExpression(), tokens[1:]
+    elif tokens[0].type == "name":
+        name_value = tokens[0].value
+        tokens = tokens[1:]
+
+        if not tokens or tokens[0].type != "paren_left":
+            return NameExpression(name=name_value), tokens
+        else:
+            if (
+                name_value.lower() == "count"
+                and len(tokens) > 2
+                and tokens[1].type == "wildcard"
+                and tokens[2].type == "paren_right"
+            ):
+                tokens = tokens[3:]
+                return FunctionCallExpression(name="count", args=[Wildcard()]), tokens
+            else:
+                tokens = tokens[1:]
+                args = []
+                while True:
+                    param_expression, tokens = parse_expression(tokens)
+                    args.append(param_expression)
+                    if tokens[0].type == "comma":
+                        tokens = tokens[1:]
+                        continue
+                    elif tokens[0].type == "paren_right":
+                        tokens = tokens[1:]
+                        break
+                    else:
+                        raise ValueError("Expected comma or closing parenthesis")
+                return FunctionCallExpression(name=name_value, args=args), tokens
     else:
-        raise ValueError("Invalid expression: " + str(stack))
+        raise ValueError(f"Unexpected token in expression: {tokens[0]}")
+
+
+def parse_arithmetic_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
+    """Parse arithmetic expressions (+, -, *, /)"""
+    left, tokens = parse_primary_expression(tokens)
+
+    while (
+        tokens
+        and tokens[0].type == "operator"
+        and tokens[0].value in ["+", "-", "*", "/"]
+    ):
+        operator = tokens[0].value
+        tokens = tokens[1:]
+        right, tokens = parse_primary_expression(tokens)
+
+        if operator == "+":
+            left = PlusExpression(left=left, right=right)
+        elif operator == "-":
+            left = MinusExpression(left=left, right=right)
+        elif operator == "*":
+            left = MultiplyExpression(left=left, right=right)
+        elif operator == "/":
+            left = DivideExpression(left=left, right=right)
+
+    return left, tokens
+
+
+def parse_comparison_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
+    """Parse comparison expressions (=, <, >, <=, >=, !=, IS, IS NOT)"""
+    left, tokens = parse_arithmetic_expression(tokens)
+
+    if not tokens:
+        return left, tokens
+
+    if tokens[0].type == "operator" and tokens[0].value in [
+        "=",
+        "<",
+        ">",
+        "<=",
+        ">=",
+        "!=",
+        "<>",
+    ]:
+        operator = tokens[0].value
+        tokens = tokens[1:]
+        right, tokens = parse_arithmetic_expression(tokens)
+
+        if operator == "=":
+            return EqualExpression(left=left, right=right), tokens
+        elif operator == "<":
+            return LessThanExpression(left=left, right=right), tokens
+        elif operator == "<=":
+            return LessThanOrEqualExpression(left=left, right=right), tokens
+        elif operator == ">":
+            return GreaterThanExpression(left=left, right=right), tokens
+        elif operator == ">=":
+            return GreaterThanOrEqualExpression(left=left, right=right), tokens
+        elif operator in ["!=", "<>"]:
+            return NotEqualExpression(left=left, right=right), tokens
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() == "IS NOT":
+        # Handle "IS NOT" as a single token
+        tokens = tokens[1:]
+        right, tokens = parse_arithmetic_expression(tokens)
+        return IsExpression(left=left, right=right, is_not=True), tokens
+    elif tokens[0].type == "keyword" and tokens[0].value.upper() == "IS":
+        # Handle "IS" followed by "NOT" as separate tokens, or just "IS"
+        tokens = tokens[1:]
+        if tokens and tokens[0].type == "keyword" and tokens[0].value.upper() == "NOT":
+            tokens = tokens[1:]
+            right, tokens = parse_arithmetic_expression(tokens)
+            return IsExpression(left=left, right=right, is_not=True), tokens
+        else:
+            right, tokens = parse_arithmetic_expression(tokens)
+            return IsExpression(left=left, right=right, is_not=False), tokens
+
+    return left, tokens
+
+
+def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
+    """Parse logical expressions (AND, OR) - lowest precedence"""
+    left, tokens = parse_comparison_expression(tokens)
+
+    while (
+        tokens
+        and tokens[0].type == "keyword"
+        and tokens[0].value.upper() in ["AND", "OR"]
+    ):
+        operator = tokens[0].value.upper()
+        tokens = tokens[1:]
+        right, tokens = parse_comparison_expression(tokens)
+
+        if operator == "AND":
+            left = AndExpression(left=left, right=right)
+        elif operator == "OR":
+            left = OrExpression(left=left, right=right)
+
+    return left, tokens
 
 
 def parse_where(tokens: List[Token]) -> Tuple[Optional[Where], List[Token]]:
