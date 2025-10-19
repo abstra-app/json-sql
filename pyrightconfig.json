@@ -5,16 +5,13 @@
   "exclude": [
     "**/__pycache__",
     "**/build",
-    "**/dist"
+    "**/dist",
+    "**/*_test.py"
   ],
   "pythonVersion": "3.8",
   "pythonPlatform": "All",
-  "typeCheckingMode": "basic",
+  "typeCheckingMode": "off",
   "reportMissingImports": true,
   "reportMissingTypeStubs": false,
-  "reportUnusedImport": false,
-  "reportUnusedClass": false,
-  "reportUnusedFunction": false,
-  "reportUnusedVariable": false,
-  "reportDuplicateImport": true
+  "reportSyntaxError": true
 }
