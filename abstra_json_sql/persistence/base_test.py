@@ -1,7 +1,8 @@
-from unittest import TestCase
-from tempfile import mkdtemp
-from shutil import rmtree
 from pathlib import Path
+from shutil import rmtree
+from tempfile import mkdtemp
+from unittest import TestCase
+
 from ..tables import Column, ColumnType, Table
 from .json import FileSystemJsonTables
 from .jsonl import FileSystemJsonLTables

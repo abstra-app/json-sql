@@ -1,5 +1,6 @@
 from typing import List, Tuple
-from .tokens import Token, operators, keywords
+
+from .tokens import Token, keywords, operators
 
 
 def start_with_operator(code: str):

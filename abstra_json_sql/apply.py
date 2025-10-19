@@ -1,50 +1,51 @@
-from typing import List, Dict, Optional
-from .infer import infer_expression
-from .parser import parse_expression
-from .lexer import scan
-from .tables import ITablesSnapshot, Table, Column
-from .persistence import ExtendedTables
-from .field_name import field_name, expression_name
+from dataclasses import dataclass
+from typing import Dict, List, Optional
+
 from .ast import (
-    Delete,
-    Expression,
-    Update,
-    StringExpression,
-    IntExpression,
-    Select,
-    FloatExpression,
-    With,
-    NameExpression,
-    DefaultExpression,
-    From,
-    SelectField,
-    Where,
-    Wildcard,
-    GroupBy,
-    FunctionCallExpression,
-    Command,
-    PlusExpression,
-    Insert,
-    NullExpression,
-    NotExpression,
     AndExpression,
-    OrExpression,
-    IsExpression,
-    FalseExpression,
-    TrueExpression,
-    OrderBy,
-    MinusExpression,
-    MultiplyExpression,
+    Command,
+    DefaultExpression,
+    Delete,
     DivideExpression,
     EqualExpression,
-    NotEqualExpression,
+    Expression,
+    FalseExpression,
+    FloatExpression,
+    From,
+    FunctionCallExpression,
     GreaterThanExpression,
     GreaterThanOrEqualExpression,
+    GroupBy,
+    Insert,
+    IntExpression,
+    IsExpression,
     LessThanExpression,
     LessThanOrEqualExpression,
     Limit,
+    MinusExpression,
+    MultiplyExpression,
+    NameExpression,
+    NotEqualExpression,
+    NotExpression,
+    NullExpression,
+    OrderBy,
+    OrExpression,
+    PlusExpression,
+    Select,
+    SelectField,
+    StringExpression,
+    TrueExpression,
+    Update,
+    Where,
+    Wildcard,
+    With,
 )
-from dataclasses import dataclass
+from .field_name import expression_name, field_name
+from .infer import infer_expression
+from .lexer import scan
+from .parser import parse_expression
+from .persistence import ExtendedTables
+from .tables import Column, ITablesSnapshot, Table
 
 
 def is_aggregate_function(name: str) -> bool:

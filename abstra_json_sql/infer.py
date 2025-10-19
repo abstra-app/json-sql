@@ -1,18 +1,18 @@
-from .tables import ColumnType
 from .ast import (
+    DivideExpression,
     Expression,
-    StringExpression,
-    IntExpression,
-    FloatExpression,
-    NullExpression,
-    TrueExpression,
     FalseExpression,
-    PlusExpression,
+    FloatExpression,
+    FunctionCallExpression,
+    IntExpression,
     MinusExpression,
     MultiplyExpression,
-    DivideExpression,
-    FunctionCallExpression,
+    NullExpression,
+    PlusExpression,
+    StringExpression,
+    TrueExpression,
 )
+from .tables import ColumnType
 
 
 def infer_expression(expr: Expression, ctx: dict) -> ColumnType:

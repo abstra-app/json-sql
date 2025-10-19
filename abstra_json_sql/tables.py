@@ -1,8 +1,9 @@
-from typing import Any, List, Optional, Type, TYPE_CHECKING
+import uuid
 from abc import ABC, abstractmethod
 from enum import Enum
+from typing import TYPE_CHECKING, Any, List, Optional, Type
+
 from .string_utils import snake_case
-import uuid
 
 if TYPE_CHECKING:
     from pydantic import BaseModel

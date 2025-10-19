@@ -1,9 +1,9 @@
 """Persistence implementations for table storage."""
 
-from .memory import InMemoryTables
+from .extended import ExtendedTables
 from .json import FileSystemJsonTables
 from .jsonl import FileSystemJsonLTables
-from .extended import ExtendedTables
+from .memory import InMemoryTables
 
 __all__ = [
     "InMemoryTables",

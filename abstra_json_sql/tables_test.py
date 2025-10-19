@@ -1,12 +1,14 @@
+from unittest import TestCase
+
 import pytest
+
+from .persistence import InMemoryTables
 from .tables import (
     Column,
     ColumnType,
-    Table,
     ForeignKey,
+    Table,
 )
-from .persistence import InMemoryTables
-from unittest import TestCase
 
 
 class TestColumnType:

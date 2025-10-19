@@ -1,4 +1,4 @@
-from .ast import SelectField, NameExpression, FunctionCallExpression, Expression
+from .ast import Expression, FunctionCallExpression, NameExpression, SelectField
 
 
 def field_name(field: SelectField) -> str:

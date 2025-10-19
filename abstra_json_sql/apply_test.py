@@ -1,27 +1,27 @@
 from unittest import TestCase
-from .ast import (
-    Where,
-    GreaterThanExpression,
-    NameExpression,
-    IntExpression,
-    OrderBy,
-    OrderField,
-    GroupBy,
-    StringExpression,
-    PlusExpression,
-    MinusExpression,
-    MultiplyExpression,
-    DivideExpression,
-    FloatExpression,
-    Limit,
-)
 
 from .apply import (
     apply_expression,
-    apply_where,
-    apply_order_by,
     apply_group_by,
     apply_limit,
+    apply_order_by,
+    apply_where,
+)
+from .ast import (
+    DivideExpression,
+    FloatExpression,
+    GreaterThanExpression,
+    GroupBy,
+    IntExpression,
+    Limit,
+    MinusExpression,
+    MultiplyExpression,
+    NameExpression,
+    OrderBy,
+    OrderField,
+    PlusExpression,
+    StringExpression,
+    Where,
 )
 
 

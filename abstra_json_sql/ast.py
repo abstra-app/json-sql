@@ -1,6 +1,6 @@
-from typing import List, Optional, Literal, Union, Tuple
-from dataclasses import dataclass
 from abc import ABC
+from dataclasses import dataclass
+from typing import List, Literal, Optional, Tuple, Union
 
 
 @dataclass

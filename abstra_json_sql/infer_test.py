@@ -1,8 +1,9 @@
 from unittest import TestCase
+
 from .infer import infer_expression
-from .tables import ColumnType
 from .lexer import scan
 from .parser import parse_expression
+from .tables import ColumnType
 
 
 class TestInferExpression(TestCase):

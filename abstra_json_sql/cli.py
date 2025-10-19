@@ -1,12 +1,13 @@
-from pathlib import Path
-from .tables import Column, ColumnType, Table
-from .persistence import FileSystemJsonLTables
-from .eval import eval_sql
 from argparse import ArgumentParser
 from csv import DictWriter
+from json import dumps
+from pathlib import Path
 from sys import stdout
 from typing import List, Literal
-from json import dumps
+
+from .eval import eval_sql
+from .persistence import FileSystemJsonLTables
+from .tables import Column, ColumnType, Table
 
 
 def query(code: str, workdir: Path, ctx: dict):

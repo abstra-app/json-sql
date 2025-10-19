@@ -1,5 +1,7 @@
-import pytest
 from unittest import TestCase
+
+import pytest
+
 from ..tables import Column, ColumnType, Table
 from .memory import InMemoryTables
 

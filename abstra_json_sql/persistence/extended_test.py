@@ -1,7 +1,8 @@
 import pytest
+
 from ..tables import Column, ColumnType, Table
-from .memory import InMemoryTables
 from .extended import ExtendedTables
+from .memory import InMemoryTables
 
 
 class TestExtendedTables:

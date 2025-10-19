@@ -1,10 +1,12 @@
-import pytest
-import tempfile
 import json
+import tempfile
 from pathlib import Path
+
+import pytest
+
 from ..tables import Column, ColumnType, Table
-from .jsonl import FileSystemJsonLTables
 from .base_test import FsTablesTest
+from .jsonl import FileSystemJsonLTables
 
 
 class FileSystemJsonLTablesTest(FsTablesTest):

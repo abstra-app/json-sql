@@ -1,6 +1,6 @@
+from .apply import apply_command
 from .lexer import scan
 from .parser import parse
-from .apply import apply_command
 from .tables import ITablesSnapshot
 
 

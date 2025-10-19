@@ -8,17 +8,18 @@ This script demonstrates that:
 3. External API still works with column names for backward compatibility
 """
 
-import tempfile
 import json
+import tempfile
 from pathlib import Path
+
+from abstra_json_sql.persistence import (
+    FileSystemJsonTables,
+    InMemoryTables,
+)
 from abstra_json_sql.tables import (
     Column,
     ColumnType,
     Table,
-)
-from abstra_json_sql.persistence import (
-    InMemoryTables,
-    FileSystemJsonTables,
 )
 
 

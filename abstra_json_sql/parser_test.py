@@ -1,28 +1,29 @@
 from unittest import TestCase
-from .parser import parse, parse_expression, parse_from, parse_limit, accept_keyword
-from .lexer import scan
-from .tokens import Token
+
 from .ast import (
-    Select,
-    Insert,
-    From,
-    Wildcard,
-    PlusExpression,
-    FunctionCallExpression,
-    SelectField,
-    IntExpression,
-    With,
-    WithPart,
-    NameExpression,
-    IsExpression,
     EqualExpression,
+    From,
+    FunctionCallExpression,
+    Insert,
+    IntExpression,
+    IsExpression,
+    Limit,
+    NameExpression,
     NullExpression,
+    OrderBy,
+    OrderField,
+    PlusExpression,
+    Select,
+    SelectField,
     StringExpression,
     Where,
-    OrderBy,
-    Limit,
-    OrderField,
+    Wildcard,
+    With,
+    WithPart,
 )
+from .lexer import scan
+from .parser import accept_keyword, parse, parse_expression, parse_from, parse_limit
+from .tokens import Token
 
 
 class ParserTest(TestCase):

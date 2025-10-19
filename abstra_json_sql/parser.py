@@ -1,48 +1,49 @@
-from .tokens import Token
-from typing import List, Tuple, Optional, Union
+from typing import List, Optional, Tuple, Union
+
 from .ast import (
-    Ast,
-    Select,
-    Delete,
-    SelectField,
-    Limit,
-    IntExpression,
-    Wildcard,
-    Update,
-    FunctionCallExpression,
-    With,
-    WithPart,
-    From,
-    Insert,
-    NameExpression,
-    EqualExpression,
-    GroupBy,
-    FloatExpression,
-    FalseExpression,
-    DefaultExpression,
-    NullExpression,
-    IsExpression,
-    TrueExpression,
-    NotExpression,
-    LessThanOrEqualExpression,
-    NotEqualExpression,
-    GreaterThanExpression,
-    LessThanExpression,
     AndExpression,
-    OrExpression,
+    Ast,
+    DefaultExpression,
+    Delete,
+    DivideExpression,
+    EqualExpression,
+    Expression,
+    FalseExpression,
+    FloatExpression,
+    From,
+    FunctionCallExpression,
+    GreaterThanExpression,
     GreaterThanOrEqualExpression,
-    Where,
+    GroupBy,
     Having,
-    StringExpression,
+    Insert,
+    IntExpression,
+    IsExpression,
+    Join,
+    LessThanExpression,
+    LessThanOrEqualExpression,
+    Limit,
+    MinusExpression,
+    MultiplyExpression,
+    NameExpression,
+    NotEqualExpression,
+    NotExpression,
+    NullExpression,
     OrderBy,
     OrderField,
+    OrExpression,
     PlusExpression,
-    MinusExpression,
-    Join,
-    MultiplyExpression,
-    DivideExpression,
-    Expression,
+    Select,
+    SelectField,
+    StringExpression,
+    TrueExpression,
+    Update,
+    Where,
+    Wildcard,
+    With,
+    WithPart,
 )
+from .tokens import Token
 
 
 def parse_order(tokens: List[Token]) -> Tuple[OrderBy, List[Token]]:
@@ -185,12 +186,9 @@ def parse_expression(tokens: List[Token]) -> Tuple[Expression, List[Token]]:
                             raise ValueError("Expected comma or closing parenthesis")
 
                     stack.append(FunctionCallExpression(name=name_value, args=args))
-            print(f"{stack=}")
-            print(f"{tokens=}")
             continue
         elif tokens[0].type == "operator":
             operator = tokens[0].value
-            print(f"Operator: {operator}")
             if operator == "+":
                 tokens = tokens[1:]
                 left = stack.pop()
@@ -761,8 +759,6 @@ def parse_with(tokens: List[Token]) -> Tuple[Optional[Ast], List[Token]]:
 
         cmd, tokens = parse_expression(tokens)
         parts.append(WithPart(name=name.value, command=cmd))
-
-        print(tokens)
 
         if tokens[0].type == "comma":
             tokens = tokens[1:]

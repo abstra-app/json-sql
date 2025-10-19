@@ -1,8 +1,8 @@
-from typing import List, Optional
-from pathlib import Path
 import json
+from pathlib import Path
+from typing import List, Optional
 
-from ..tables import ITablesSnapshot, Table, Column, ColumnType
+from ..tables import Column, ColumnType, ITablesSnapshot, Table
 
 
 class FileSystemJsonTables(ITablesSnapshot):

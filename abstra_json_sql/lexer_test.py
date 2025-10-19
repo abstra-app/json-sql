@@ -1,5 +1,6 @@
 from unittest import TestCase
-from .lexer import scan, Token
+
+from .lexer import Token, scan
 
 
 class TestTokens(TestCase):

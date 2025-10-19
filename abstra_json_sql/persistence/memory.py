@@ -1,5 +1,6 @@
 from typing import List, Optional
-from ..tables import ITablesSnapshot, Table, Column, ColumnType
+
+from ..tables import Column, ColumnType, ITablesSnapshot, Table
 
 
 class InMemoryTables(ITablesSnapshot):

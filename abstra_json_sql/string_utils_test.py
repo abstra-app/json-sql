@@ -1,4 +1,5 @@
 from unittest import TestCase, main
+
 from abstra_json_sql.string_utils import snake_case
 
 

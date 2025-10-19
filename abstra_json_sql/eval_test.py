@@ -1,7 +1,8 @@
 from unittest import TestCase
+
 from .eval import eval_sql
-from .tables import Table, Column, ColumnType
 from .persistence import InMemoryTables
+from .tables import Column, ColumnType, Table
 
 
 class TestEvalSQL(TestCase):
