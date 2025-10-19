@@ -1,0 +1,4 @@
+# Production dependencies for abstra-json-sql
+
+# Optional dependency for Pydantic model support
+pydantic>=2.0.0

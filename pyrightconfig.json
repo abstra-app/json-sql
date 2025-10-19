@@ -1,0 +1,17 @@
+{
+  "include": [
+    "abstra_json_sql"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/build",
+    "**/dist",
+    "**/*_test.py"
+  ],
+  "pythonVersion": "3.9",
+  "pythonPlatform": "All",
+  "typeCheckingMode": "off",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportSyntaxError": true
+}
