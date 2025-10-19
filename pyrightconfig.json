@@ -1,0 +1,20 @@
+{
+  "include": [
+    "abstra_json_sql"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/build",
+    "**/dist"
+  ],
+  "pythonVersion": "3.8",
+  "pythonPlatform": "All",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportUnusedImport": false,
+  "reportUnusedClass": false,
+  "reportUnusedFunction": false,
+  "reportUnusedVariable": false,
+  "reportDuplicateImport": true
+}
