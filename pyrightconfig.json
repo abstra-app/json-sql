@@ -8,7 +8,7 @@
     "**/dist",
     "**/*_test.py"
   ],
-  "pythonVersion": "3.8",
+  "pythonVersion": "3.9",
   "pythonPlatform": "All",
   "typeCheckingMode": "off",
   "reportMissingImports": true,
