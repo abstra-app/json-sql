@@ -46,6 +46,17 @@ class AndExpression(Expression):
     left: Expression
     right: Expression
 
+    @classmethod
+    def from_list(cls, expressions: List[Expression]) -> "AndExpression":
+        if len(expressions) == 0:
+            return AndExpression(TrueExpression(), TrueExpression())
+        elif len(expressions) == 1:
+            return AndExpression(TrueExpression(), expressions[0])
+        else:
+            return AndExpression(
+                expressions[0], AndExpression.from_list(expressions[1:])
+            )
+
 
 @dataclass
 class OrExpression(Expression):
@@ -212,6 +223,15 @@ class Select(Command):
     having_part: Optional[Where] = None
     order_part: Optional[OrderBy] = None
     limit_part: Optional[Limit] = None
+
+    def get_tables(self) -> List[str]:
+        tables = []
+        if self.from_part:
+            tables.append(self.from_part.table)
+            if self.from_part.join:
+                for join in self.from_part.join:
+                    tables.append(join.table)
+        return tables
 
 
 @dataclass
