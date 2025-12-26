@@ -126,24 +126,14 @@ class Permissions:
         self.rules = []
 
     def grant(
-        self, command: RuleCommand, table_name: str, condition: Optional[str]
+        self, command: RuleCommand, table_name: str, condition: Optional[str] = None
     ) -> "ITablesSnapshot":
-        if condition is None:
-
-            def condition(_):
-                return self.default
-
         self.rules.append(Rule("GRANT", command, table_name, condition))
         return self
 
     def revoke(
-        self, command: RuleCommand, table_name: str, condition: Optional[str]
+        self, command: RuleCommand, table_name: str, condition: Optional[str] = None
     ) -> "ITablesSnapshot":
-        if condition is None:
-
-            def condition(_):
-                return not self.default
-
         self.rules.append(Rule("REVOKE", command, table_name, condition))
         return self
 

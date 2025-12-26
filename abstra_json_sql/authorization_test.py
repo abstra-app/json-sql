@@ -4,6 +4,13 @@ from .authorization import Permissions
 
 
 class TestPermissions(TestCase):
+    def test_grant_no_conditions(self):
+        p = Permissions(default=False)
+        p.grant("SELECT", "users")
+
+        self.assertTrue(p.allowed("select * from users"))
+        self.assertTrue(p.allowed("select * from users where age > 18"))
+
     def test_select(self):
         p = Permissions(default=False)
         p.grant("SELECT", "users", "age > 18")
