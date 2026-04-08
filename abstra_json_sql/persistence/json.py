@@ -1,8 +1,27 @@
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import List, Optional
 
 from ..tables import Column, ColumnType, ITablesSnapshot, Table
+
+
+def _atomic_write_text(path: Path, content: str) -> None:
+    """Write content to a file atomically using write-to-temp + os.replace."""
+    fd, tmp_path = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 class FileSystemJsonTables(ITablesSnapshot):
@@ -16,7 +35,7 @@ class FileSystemJsonTables(ITablesSnapshot):
         """Ensure the metadata table exists"""
         metadata_path = self.workdir / "__schema__.json"
         if not metadata_path.exists():
-            metadata_path.write_text(json.dumps({}))
+            _atomic_write_text(metadata_path, json.dumps({}))
 
     def _get_table_metadata_by_name(
         self, table_name: str
@@ -62,7 +81,7 @@ class FileSystemJsonTables(ITablesSnapshot):
             column_dicts.append(col_dict)
 
         metadata[table_id] = {"table_name": table_name, "columns": column_dicts}
-        metadata_path.write_text(json.dumps(metadata, indent=2))
+        _atomic_write_text(metadata_path, json.dumps(metadata, indent=2))
 
     def _remove_table_metadata(self, table_id: str):
         """Remove table metadata from the __schema__.json file"""
@@ -70,7 +89,7 @@ class FileSystemJsonTables(ITablesSnapshot):
         metadata = json.loads(metadata_path.read_text())
         if table_id in metadata:
             del metadata[table_id]
-        metadata_path.write_text(json.dumps(metadata, indent=2))
+        _atomic_write_text(metadata_path, json.dumps(metadata, indent=2))
 
     def get_table(self, name: str) -> Optional[Table]:
         table_id, columns = self._get_table_metadata_by_name(name)
@@ -123,7 +142,7 @@ class FileSystemJsonTables(ITablesSnapshot):
             row_with_ids = table.convert_row_to_column_ids(row)
             data_with_ids.append(row_with_ids)
 
-        table_path.write_text(json.dumps(data_with_ids, indent=2))
+        _atomic_write_text(table_path, json.dumps(data_with_ids, indent=2))
         # Save columns metadata
         self._save_table_metadata(table.table_id, table.name, table.columns)
 
@@ -172,7 +191,7 @@ class FileSystemJsonTables(ITablesSnapshot):
         # Convert row to column ID format
         row_with_ids = temp_table.convert_row_to_column_ids(row)
         rows.append(row_with_ids)
-        table_path.write_text(json.dumps(rows, indent=2))
+        _atomic_write_text(table_path, json.dumps(rows, indent=2))
 
     def add_column(self, table_name: str, column: Column):
         table_id, existing_columns = self._get_table_metadata_by_name(table_name)
@@ -197,7 +216,7 @@ class FileSystemJsonTables(ITablesSnapshot):
         # Add column to data using column ID
         for row in rows:
             row[column.column_id] = column.default
-        table_path.write_text(json.dumps(rows, indent=2))
+        _atomic_write_text(table_path, json.dumps(rows, indent=2))
 
         # Update metadata
         existing_columns.append(column)
@@ -228,7 +247,7 @@ class FileSystemJsonTables(ITablesSnapshot):
             for row in rows:
                 if column_to_remove.column_id in row:
                     del row[column_to_remove.column_id]
-        table_path.write_text(json.dumps(rows, indent=2))
+        _atomic_write_text(table_path, json.dumps(rows, indent=2))
 
         # Update metadata
         columns = [col for col in columns if col.name != column_name]
@@ -293,7 +312,7 @@ class FileSystemJsonTables(ITablesSnapshot):
         # Convert changes to column ID format
         changes_with_ids = temp_table.convert_row_to_column_ids(changes)
         rows[idx].update(changes_with_ids)
-        table_path.write_text(json.dumps(rows, indent=2))
+        _atomic_write_text(table_path, json.dumps(rows, indent=2))
 
     def _delete(self, table_name: str, idxs: List[int]):
         table_id, _ = self._get_table_metadata_by_name(table_name)
@@ -314,4 +333,4 @@ class FileSystemJsonTables(ITablesSnapshot):
             if idx < 0 or idx >= len(rows):
                 raise IndexError(f"Index {idx} out of range for table {table_name}")
             del rows[idx]
-        table_path.write_text(json.dumps(rows, indent=2))
+        _atomic_write_text(table_path, json.dumps(rows, indent=2))
